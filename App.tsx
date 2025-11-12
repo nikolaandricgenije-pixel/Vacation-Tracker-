@@ -13,6 +13,8 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import QuickActions from './components/QuickActions';
 import ClockWidget from './components/ClockWidget';
 
+import { registerPushNotifications } from './utils/pushNotifications';
+
 function NotificationActionHandler() {
    const dispatch = useVacationDispatch();
 
@@ -194,8 +196,9 @@ function WelcomeOnboarding() {
 }
 
 function AppContent() {
-   const { isAdmin, theme, isLoggedIn } = useVacationState();
+   const { isAdmin, theme, isLoggedIn, currentUser } = useVacationState();
 
+   const dispatch = useVacationDispatch();
   useEffect(() => {
     const root = window.document.documentElement;
     const body = window.document.body;
@@ -211,6 +214,26 @@ function AppContent() {
     }
 
   }, [theme]);
+
+  useEffect(() => {
+    if (isLoggedIn && currentUser) {
+      const initPushNotifications = async () => {
+        const success = await registerPushNotifications();
+        if (success) {
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            payload: {
+              id: new Date().toISOString(),
+              type: 'success',
+              message: 'Push notifications enabled! You will receive timely reminders.',
+            },
+          });
+        }
+      };
+      
+      initPushNotifications();
+    }
+  }, [isLoggedIn, currentUser, dispatch]);
 
 
   if (!isLoggedIn) {

@@ -39,3 +39,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
+
+<!-- Add before closing </application> tag -->
+<!-- Push Notifications permissions are handled by Capacitor plugin -->

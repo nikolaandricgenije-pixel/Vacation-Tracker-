@@ -1,9 +1,11 @@
 # Vacation Tracker Pro - PWA & Mobile App
 
-A comprehensive time tracking and vacation management application with PWA capabilities and native mobile wrappers.
+A comprehensive time tracking and vacation management application with PWA capabilities, native mobile wrappers, SSO authentication, and push notifications.
 
 ## 🚀 Features
 
+- **🔐 SSO Authentication**: Sign in with Google (free OAuth integration)
+- **📱 Push Notifications**: Real-time notifications for browser, Android, and iOS
 - **Multi-level Approval System**: Employee → Project Manager → Admin/CEO
 - **Time Tracking**: Clock in/out with break management and overtime calculation
 - **Vacation Management**: Request, approve, and track vacation time
@@ -11,6 +13,58 @@ A comprehensive time tracking and vacation management application with PWA capab
 - **Mobile Apps**: Native Android APK and iOS app wrappers
 - **Real-time Notifications**: Push notifications and in-app alerts
 - **Responsive Design**: Optimized for desktop, tablet, and mobile
+- **Backend API**: Express server for authentication and notifications
+
+## 📋 New in this version
+
+### 🔐 Single Sign-On (SSO)
+- Google OAuth integration (100% FREE)
+- Secure JWT-based authentication
+- Automatic user registration
+- Seamless login experience
+
+### 📲 Advanced Push Notifications
+- **Web Push**: Browser notifications with Web Push API
+- **Android**: Native push notifications via Capacitor
+- **iOS**: Native push notifications via Capacitor
+- **Interactive Actions**: Quick actions from notifications
+- **Contextual Messages**: Time-based notification content
+
+## 🛠️ Quick Start
+
+### 1. Installation
+
+```bash
+npm install
+```
+
+### 2. Environment Setup
+
+Copy the example environment file and configure:
+
+```bash
+cp .env.example .env
+```
+
+See [SSO_PUSH_SETUP.md](./SSO_PUSH_SETUP.md) for detailed configuration instructions.
+
+### 3. Development
+
+Run frontend and backend servers:
+
+**Terminal 1** - Frontend:
+```bash
+npm run dev
+```
+
+**Terminal 2** - Backend:
+```bash
+npm run server
+```
+
+Access the application:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3001
 
 ## 📱 PWA (Progressive Web App)
 
@@ -25,109 +79,116 @@ A comprehensive time tracking and vacation management application with PWA capab
 - Works offline for time tracking and basic operations
 - Syncs data when back online
 
-## 🛠️ Development Setup
+## 🔐 SSO Configuration
 
-### Prerequisites
-- Node.js 16+
-- npm or yarn
-- Android Studio (for Android builds)
-- Xcode (for iOS builds, macOS only)
+### Google OAuth Setup (FREE)
 
-### Installation
-```bash
-npm install
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project
+3. Enable Google+ API
+4. Create OAuth 2.0 credentials
+5. Add authorized redirect URI: `http://localhost:3001/api/auth/google/callback`
+6. Copy Client ID and Secret to `.env.local`:
+
+```env
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
 ```
 
-### Development
+📚 Detailed guide: [SSO_PUSH_SETUP.md](./SSO_PUSH_SETUP.md)
+
+## 📲 Push Notifications Setup
+
+### Web Push (FREE)
+
+Generate VAPID keys:
 ```bash
-npm run dev
+npx web-push generate-vapid-keys
 ```
 
-### Build for Production
-```bash
-npm run build
+Add to `.env.local`:
+```env
+VAPID_PUBLIC_KEY=your-public-key
+VAPID_PRIVATE_KEY=your-private-key
 ```
+
+### Mobile Push
+
+**Android (FREE):**
+- Setup Firebase Cloud Messaging
+- Download `google-services.json`
+- Place in `android/app/` directory
+
+**iOS (Requires Apple Developer Account - $99/year):**
+- Configure Push Notifications in Xcode
+- Add APNs certificate/key
+
+📚 Complete guide: [SSO_PUSH_SETUP.md](./SSO_PUSH_SETUP.md)
 
 ## 📱 Mobile App Builds
 
 ### Android APK Build
 
-#### Prerequisites
-- Android Studio installed
-- Android SDK configured
-
-#### Build Steps
 ```bash
-# Build the web app
 npm run build
-
-# Sync with Capacitor
 npm run build:android
-
-# Open in Android Studio
 npm run open:android
 ```
 
-#### In Android Studio:
-1. Wait for Gradle sync to complete
-2. Go to Build → Generate Signed APK/Bundle
-3. Follow the wizard to create a signed APK
-4. The APK will be in `android/app/build/outputs/apk/release/`
+In Android Studio:
+1. Wait for Gradle sync
+2. Build → Generate Signed APK/Bundle
+3. APK location: `android/app/build/outputs/apk/release/`
 
 ### iOS App Build (macOS only)
 
-#### Prerequisites
-- Xcode installed
-- iOS Simulator or physical device
-- Apple Developer Account (for App Store distribution)
-
-#### Build Steps
 ```bash
-# Build the web app
 npm run build
-
-# Sync with Capacitor
 npm run build:ios
-
-# Open in Xcode
 npm run open:ios
 ```
 
-#### In Xcode:
-1. Select your development team
-2. Choose a device/simulator
-3. Click Product → Archive for distribution
-4. Follow Apple's distribution guide
-
-## 🔧 Configuration
-
-### PWA Settings
-- **Manifest**: `public/manifest.json`
-- **Service Worker**: `public/sw.js`
-- **Icons**: Add PNG icons to `public/` directory
-
-### Capacitor Configuration
-- **Config**: `capacitor.config.ts`
-- **Android**: `android/` directory
-- **iOS**: `ios/` directory
+In Xcode:
+1. Select development team
+2. Choose device/simulator
+3. Product → Archive
 
 ## 📋 Available Scripts
 
 ```bash
-# Development
+# Frontend
 npm run dev              # Start development server
 npm run build            # Build for production
 npm run preview          # Preview production build
 
+# Backend
+npm run server           # Start backend server
+npm run server:dev       # Start backend in dev mode
+
 # Mobile Builds
 npm run build:android    # Build and sync Android app
 npm run build:ios        # Build and sync iOS app
-npm run open:android     # Open Android project in Android Studio
-npm run open:ios         # Open iOS project in Xcode
+npm run open:android     # Open Android project
+npm run open:ios         # Open iOS project
 
 # Code Quality
 npm run lint             # Run ESLint
 ```
+
+## 🔌 API Endpoints
+
+### Authentication
+- `GET /api/auth/google` - Start Google OAuth flow
+- `GET /api/auth/google/callback` - OAuth callback
+- `POST /api/auth/verify-token` - Verify JWT token
+- `GET /api/auth/logout` - Logout user
+- `GET /api/auth/user` - Get current user
+
+### Push Notifications
+- `POST /api/push/subscribe` - Register device
+- `POST /api/push/send` - Send notification
+- `POST /api/push/broadcast` - Broadcast to all
+- `GET /api/push/vapid-public-key` - Get VAPID key
 
 ## 🎯 User Roles & Permissions
 
@@ -135,6 +196,7 @@ npm run lint             # Run ESLint
 - Clock in/out and track time
 - Request vacation, paid leave, sick leave
 - View personal requests and time data
+- Receive push notifications
 
 ### Project Manager
 - All Employee permissions
@@ -153,40 +215,62 @@ npm run lint             # Run ESLint
 
 ## 🔒 Security Features
 
+- **SSO Authentication**: Secure OAuth 2.0 flow
+- **JWT Tokens**: Stateless authentication
+- **Session Management**: Secure cookie-based sessions
+- **CORS Protection**: Configurable origins
 - **Time Synchronization**: Prevents time manipulation
-- **Local Storage**: All data stored locally
-- **Offline Capability**: Works without internet
-- **Push Notifications**: Secure notification system
-
-## 📊 Data Storage
-
-- **Local Storage**: All user data stored in browser
-- **IndexedDB**: Large data sets and offline cache
-- **Service Worker**: Background sync and caching
+- **HTTPS Ready**: Production-ready security
+- **Environment Variables**: Sensitive data protection
 
 ## 🚀 Deployment
 
 ### Web Deployment
 ```bash
 npm run build
-# Deploy the 'dist' folder to your web server
+# Deploy 'dist' folder to your web server
+```
+
+### Backend Deployment
+```bash
+# Deploy 'server' folder with Node.js
+# Set environment variables
+# Ensure PORT and CORS are configured
 ```
 
 ### App Store Deployment
-1. **Android**: Generate signed APK and upload to Google Play
-2. **iOS**: Archive in Xcode and upload to App Store Connect
+1. **Android**: Generate signed APK → Google Play
+2. **iOS**: Archive in Xcode → App Store Connect
 
 ## 🐛 Troubleshooting
 
-### PWA Issues
-- Clear browser cache and service worker
-- Check browser compatibility
-- Ensure HTTPS in production
+### SSO Issues
+- Verify Google credentials in `.env.local`
+- Check callback URL in Google Console
+- Ensure backend is running on port 3001
 
-### Mobile Build Issues
-- Ensure all prerequisites are installed
-- Check Capacitor configuration
-- Verify Android/iOS SDK versions
+### Push Notification Issues
+- **Web**: Check VAPID keys and service worker
+- **Android**: Verify Firebase configuration
+- **iOS**: Check certificates and capabilities
+
+### Build Issues
+- Clear `node_modules` and reinstall
+- Check Node.js version (16+)
+- Verify all dependencies installed
+
+## 📚 Documentation
+
+- [SSO & Push Setup Guide](./SSO_PUSH_SETUP.md) - Detailed configuration
+- [API Documentation](./SSO_PUSH_SETUP.md#-api-endpoints) - Endpoint reference
+
+## 💰 Cost Breakdown
+
+- ✅ **Google OAuth**: FREE
+- ✅ **Web Push**: FREE
+- ✅ **Android Push** (Firebase): FREE
+- ⚠️ **iOS Push**: Requires Apple Developer Account ($99/year)
+- ✅ **Backend Hosting**: FREE tier available (Vercel, Heroku, Railway)
 
 ## 📄 License
 
@@ -202,6 +286,6 @@ This project is licensed under the MIT License.
 ## 📞 Support
 
 For support and questions:
+- Check [SSO_PUSH_SETUP.md](./SSO_PUSH_SETUP.md) for setup help
 - Create an issue on GitHub
-- Check the documentation
 - Review the troubleshooting guide

@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useVacationState, useVacationDispatch, sendPushNotification } from '../context/VacationContext';
+import { useVacationState, useVacationDispatch, sendPushNotification as legacySendPush } from '../context/VacationContext';
 import { VacationStatus, LeaveType, User } from '../types';
 import Button from './ui/Button';
 import SunIcon from './icons/SunIcon';
 import MoonIcon from './icons/MoonIcon';
 import BellIcon from './icons/BellIcon';
 import SettingsIcon from './icons/SettingsIcon';
+import { registerPushNotifications, sendPushNotification, simulatePushNotification } from '../utils/pushNotifications';
 
 
 const AdminToggle = () => {
@@ -81,36 +82,26 @@ function Header() {
    const [settingsOpen, setSettingsOpen] = useState(false);
  
    const requestNotificationPermission = async () => {
-     if ('Notification' in window) {
-       const permission = await Notification.requestPermission();
-       if (permission === 'granted') {
-         // Register for push notifications
-         if ('serviceWorker' in navigator && 'PushManager' in window) {
-           const registration = await navigator.serviceWorker.ready;
-           const subscription = await registration.pushManager.subscribe({
-             userVisibleOnly: true,
-             applicationServerKey: urlBase64ToUint8Array('YOUR_VAPID_PUBLIC_KEY') // Would need real VAPID key
-           });
-           console.log('Push subscription:', subscription);
-           // In real app, send subscription to backend
-         }
-       }
+     const success = await registerPushNotifications();
+     if (success) {
+       dispatch({
+         type: 'ADD_NOTIFICATION',
+         payload: {
+           id: new Date().toISOString(),
+           type: 'success',
+           message: 'Push notifications enabled successfully!',
+         },
+       });
+     } else {
+       dispatch({
+         type: 'ADD_NOTIFICATION',
+         payload: {
+           id: new Date().toISOString(),
+           type: 'error',
+           message: 'Failed to enable push notifications.',
+         },
+       });
      }
-   };
- 
-   const urlBase64ToUint8Array = (base64String: string) => {
-     const padding = '='.repeat((4 - base64String.length % 4) % 4);
-     const base64 = (base64String + padding)
-       .replace(/-/g, '+')
-       .replace(/_/g, '/');
- 
-     const rawData = window.atob(base64);
-     const outputArray = new Uint8Array(rawData.length);
- 
-     for (let i = 0; i < rawData.length; ++i) {
-       outputArray[i] = rawData.charCodeAt(i);
-     }
-     return outputArray;
    };
 
   const relevantRequests = isAdmin ? requests : requests.filter(r => r.employeeName === currentUser.name);
@@ -260,7 +251,7 @@ function Header() {
                   </Button>
                   <Button
                     onClick={async () => {
-                      const success = await sendPushNotification('morning');
+                      const success = await simulatePushNotification('morning');
                       if (!success) {
                         alert('Push notifications not available. Make sure you enabled them first.');
                       }
@@ -271,7 +262,7 @@ function Header() {
                   </Button>
                   <Button
                     onClick={async () => {
-                      const success = await sendPushNotification('lunch');
+                      const success = await simulatePushNotification('lunch');
                       if (!success) {
                         alert('Push notifications not available. Make sure you enabled them first.');
                       }

@@ -8,16 +8,29 @@
     "build": "vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
+    "server": "cd server && node index.js",
+    "server:dev": "cd server && node index.js",
     "build:android": "npm run build && npx cap sync android",
     "build:ios": "npm run build && npx cap sync ios",
     "open:android": "npx cap open android",
     "open:ios": "npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/push-notifications": "^5.1.2",
+    "@emailjs/browser": "^3.11.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "date-fns": "^2.30.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "date-fns": "^2.30.0",
-    "@emailjs/browser": "^3.11.0"
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@capacitor/android": "^5.0.0",
