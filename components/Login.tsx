@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useVacationState, useVacationDispatch } from '../context/VacationContext';
 import Button from './ui/Button';
 import Card from './ui/Card';
+import emailjs from '@emailjs/browser';
 
 function Login() {
-  const { users } = useVacationState();
-  const dispatch = useVacationDispatch();
-  const [email, setEmail] = useState('');
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [magicCode, setMagicCode] = useState('');
-  const [showCodeInput, setShowCodeInput] = useState(false);
+   const { users } = useVacationState();
+   const dispatch = useVacationDispatch();
+   const [email, setEmail] = useState('');
+   const [magicLinkSent, setMagicLinkSent] = useState(false);
+   const [magicCode, setMagicCode] = useState('');
+   const [showCodeInput, setShowCodeInput] = useState(false);
+   const [sendingEmail, setSendingEmail] = useState(false);
+   const [emailError, setEmailError] = useState<string | null>(null);
 
   // Check for magic link in URL on component mount
   useEffect(() => {
@@ -63,23 +66,52 @@ function Login() {
     }
   }, [users, dispatch]);
 
-  const handleSendMagicLink = () => {
+  const handleSendMagicLink = async () => {
     if (email) {
-      // Generate magic code
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const expires = Date.now() + (15 * 60 * 1000); // 15 minutes
+      setSendingEmail(true);
+      setEmailError(null);
 
-      // Store in localStorage (simulating email sending)
-      localStorage.setItem(`magicLink_${email}`, JSON.stringify({ code, expires }));
+      try {
+        // Generate magic code
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const expires = Date.now() + (15 * 60 * 1000); // 15 minutes
 
-      // Create magic link URL
-      const magicLink = `${window.location.origin}${window.location.pathname}?email=${encodeURIComponent(email)}&code=${code}`;
+        // Store in localStorage for verification
+        localStorage.setItem(`magicLink_${email}`, JSON.stringify({ code, expires }));
 
-      // Show the link (in real app, this would be sent via email)
-      alert(`Magic Link sent! Click here to login:\n\n${magicLink}\n\n(This simulates email sending)`);
+        // Create magic link URL
+        const magicLink = `${window.location.origin}${window.location.pathname}?email=${encodeURIComponent(email)}&code=${code}`;
 
-      setMagicLinkSent(true);
-      setShowCodeInput(true);
+        // EmailJS configuration - these should be set in environment variables
+        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'your_service_id';
+        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'your_template_id';
+        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'your_public_key';
+
+        // Prepare email template parameters
+        const templateParams = {
+          to_email: email,
+          magic_link: magicLink,
+          magic_code: code,
+          expires_in: '15 minutes',
+        };
+
+        // Send email using EmailJS
+        if (serviceId !== 'your_service_id' && templateId !== 'your_template_id' && publicKey !== 'your_public_key') {
+          await (emailjs as any).send(serviceId, templateId, templateParams, publicKey);
+          setMagicLinkSent(true);
+          setShowCodeInput(true);
+        } else {
+          // Fallback to simulation if EmailJS not configured
+          alert(`Magic Link sent! Click here to login:\n\n${magicLink}\n\n(This simulates email sending - configure EmailJS for real emails)`);
+          setMagicLinkSent(true);
+          setShowCodeInput(true);
+        }
+      } catch (error) {
+        console.error('Error sending email:', error);
+        setEmailError('Failed to send email. Please try again.');
+      } finally {
+        setSendingEmail(false);
+      }
     }
   };
 
@@ -156,16 +188,24 @@ function Login() {
                 </div>
                 <Button
                   onClick={handleSendMagicLink}
-                  disabled={!email}
+                  disabled={!email || sendingEmail}
                   className="w-full"
                 >
-                  Send Magic Link
+                  {sendingEmail ? 'Sending...' : 'Send Magic Link'}
                 </Button>
+                {emailError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-md text-center">
+                    <p className="font-semibold text-red-700 dark:text-red-300">{emailError}</p>
+                  </div>
+                )}
               </>
             ) : (
               <>
                 <div className="text-center text-green-600 dark:text-green-400 mb-4">
-                  Magic link sent! Check your email or enter the code below.
+                  {import.meta.env.VITE_EMAILJS_SERVICE_ID !== 'your_service_id' ?
+                    'Magic link sent! Check your email.' :
+                    'Magic link simulated! Check your email (configure EmailJS for real emails).'
+                  }
                 </div>
                 {showCodeInput && (
                   <>
