@@ -1,0 +1,5 @@
+{
+  "name": "Vacation Tracker",
+  "description": "A web application to book and track employee vacation days. It features a calendar view, a request form, and a summary of remaining days.",
+  "requestFramePermissions": []
+}
