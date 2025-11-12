@@ -1,10 +1,11 @@
 import React, { createContext, useReducer, useContext, useEffect, Dispatch, ReactNode } from 'react';
-import { VacationRequest, VacationStatus, LeaveType, Notification, User, WorkType, TimeEntry } from '../types';
+import { VacationRequest, VacationStatus, LeaveType, User, WorkType, TimeEntry } from '../types';
+import type { Notification as AppNotification } from '../types';
 import { addDays, differenceInMinutes, startOfDay, format } from 'date-fns';
 
 type State = {
    requests: VacationRequest[];
-   notifications: Notification[];
+   notifications: AppNotification[];
    isAdmin: boolean;
    editingRequest: VacationRequest | null;
    users: User[];
@@ -12,13 +13,14 @@ type State = {
    isLoggedIn: boolean;
    theme: 'light' | 'dark';
    timeEntries: TimeEntry[];
+   notificationPermission: NotificationPermission;
  };
 
 type Action =
    | { type: 'ADD_REQUEST'; payload: VacationRequest }
    | { type: 'APPROVE_REQUEST'; payload: { id: string; newStatus?: VacationStatus } }
    | { type: 'REJECT_REQUEST'; payload: { id: string } }
-   | { type: 'ADD_NOTIFICATION'; payload: Notification }
+   | { type: 'ADD_NOTIFICATION'; payload: AppNotification }
    | { type: 'REMOVE_NOTIFICATION'; payload: { id: string } }
    | { type: 'TOGGLE_ADMIN_VIEW' }
    | { type: 'START_EDIT'; payload: { id: string } }
@@ -38,7 +40,8 @@ type Action =
    | { type: 'LOGIN'; payload: { userName: string } }
    | { type: 'LOGOUT' }
    | { type: 'LOAD_STATE'; payload: State }
-   | { type: 'RESET_DAILY_ENTRIES' };
+   | { type: 'RESET_DAILY_ENTRIES' }
+   | { type: 'SET_NOTIFICATION_PERMISSION'; payload: NotificationPermission };
   
 const users: User[] = [
     { name: 'Nikola Andrić', roles: ['Admin', 'Employee'], vacationDays: 25, paidLeaveDays: 7 },
@@ -51,6 +54,7 @@ const users: User[] = [
 const today = new Date();
 const initialState: State = {
    timeEntries: [],
+   notificationPermission: 'default',
    requests: [
      {
        id: '1',
@@ -132,7 +136,7 @@ function vacationReducer(state: State, action: Action): State {
         request = { ...request, status: VacationStatus.Approved };
 
         // Add notification for auto-approved sick leave
-        const autoApproveNotification: Notification = {
+        const autoApproveNotification: AppNotification = {
           id: new Date().toISOString(),
           type: 'success',
           message: (
@@ -182,6 +186,17 @@ function vacationReducer(state: State, action: Action): State {
         ),
       };
     case 'ADD_NOTIFICATION':
+      // Show browser notification if permission granted
+      if (state.notificationPermission === 'granted' && 'Notification' in window) {
+        const notification = new Notification('Vacation Tracker', {
+          body: action.payload.message.toString().replace(/<[^>]*>/g, ''), // Strip HTML
+          icon: '/icon-192.png', // Assuming icon exists
+        });
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+      }
       return {
         ...state,
         notifications: [...state.notifications, action.payload],
@@ -421,6 +436,11 @@ function vacationReducer(state: State, action: Action): State {
         timeEntries: state.timeEntries.filter(e => e.date.getTime() !== today.getTime()),
       };
     }
+    case 'SET_NOTIFICATION_PERMISSION':
+      return {
+        ...state,
+        notificationPermission: action.payload,
+      };
     default:
       return state;
   }
@@ -472,6 +492,18 @@ export function VacationProvider({ children }: { children: ReactNode }) {
          if (user) {
            dispatch({ type: 'LOGIN', payload: { userName: user.name } });
          }
+       }
+     }
+   }, []);
+
+   // Request notification permission
+   useEffect(() => {
+     if ('Notification' in window) {
+       dispatch({ type: 'SET_NOTIFICATION_PERMISSION', payload: Notification.permission });
+       if (Notification.permission === 'default') {
+         Notification.requestPermission().then(permission => {
+           dispatch({ type: 'SET_NOTIFICATION_PERMISSION', payload: permission });
+         });
        }
      }
    }, []);
