@@ -216,25 +216,6 @@ function AppContent() {
 
   }, [theme]);
 
-  useEffect(() => {
-    if (isLoggedIn && currentUser) {
-      const initPushNotifications = async () => {
-        const success = await registerPushNotifications();
-        if (success) {
-          dispatch({
-            type: 'ADD_NOTIFICATION',
-            payload: {
-              id: new Date().toISOString(),
-              type: 'success',
-              message: 'Push notifications enabled! You will receive timely reminders.',
-            },
-          });
-        }
-      };
-      
-      initPushNotifications();
-    }
-  }, [isLoggedIn, currentUser, dispatch]);
 
 
   if (!isLoggedIn || !currentUser) {
