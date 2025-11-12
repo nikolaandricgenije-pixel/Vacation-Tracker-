@@ -527,7 +527,7 @@ export function VacationProvider({ children }: { children: ReactNode }) {
              if (!existingSubscription) {
                try {
                  // Fetch VAPID public key from backend
-                 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                 const API_URL = import.meta.env.VITE_API_URL || '';
                  const response = await fetch(`${API_URL}/api/push/vapid-public-key`);
                  if (!response.ok) {
                    throw new Error('Failed to fetch VAPID key');

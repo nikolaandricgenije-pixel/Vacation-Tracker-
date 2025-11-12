@@ -111,7 +111,7 @@ function Login() {
   }, [users, dispatch]);
 
   const handleGoogleSSO = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiUrl = import.meta.env.VITE_API_URL || '';
     window.location.href = `${apiUrl}/api/auth/google`;
   };
 

@@ -1,7 +1,7 @@
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || '';
 const isNative = Capacitor.isNativePlatform();
 
 export interface NotificationData {
@@ -79,7 +79,7 @@ const registerWebPush = async (): Promise<boolean> => {
 
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey)
+      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource
     });
 
     await saveWebPushSubscription(subscription);
