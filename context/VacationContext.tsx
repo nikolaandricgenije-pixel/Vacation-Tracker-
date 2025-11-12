@@ -525,18 +525,36 @@ export function VacationProvider({ children }: { children: ReactNode }) {
              const existingSubscription = await registration.pushManager.getSubscription();
 
              if (!existingSubscription) {
-               // Fetch VAPID public key from backend
-               const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-               const response = await fetch(`${API_URL}/api/push/vapid-public-key`);
-               const { publicKey } = await response.json();
+               try {
+                 // Fetch VAPID public key from backend
+                 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                 const response = await fetch(`${API_URL}/api/push/vapid-public-key`);
+                 if (!response.ok) {
+                   throw new Error('Failed to fetch VAPID key');
+                 }
+                 const { publicKey } = await response.json();
 
-               // Subscribe to push notifications
-               const subscription = await registration.pushManager.subscribe({
-                 userVisibleOnly: true,
-                 applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource
-               });
-               dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: subscription });
-               console.log('Push subscription created:', subscription);
+                 // Subscribe to push notifications
+                 const subscription = await registration.pushManager.subscribe({
+                   userVisibleOnly: true,
+                   applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource
+                 });
+                 dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: subscription });
+                 console.log('Push subscription created:', subscription);
+               } catch (error) {
+                 console.error('Error setting up push notifications:', error);
+                 // Fallback: try without VAPID key for localhost
+                 try {
+                   const subscription = await registration.pushManager.subscribe({
+                     userVisibleOnly: true,
+                     applicationServerKey: null, // For localhost, can be null
+                   });
+                   dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: subscription });
+                   console.log('Push subscription created with fallback:', subscription);
+                 } catch (fallbackError) {
+                   console.error('Fallback push subscription also failed:', fallbackError);
+                 }
+               }
              } else {
                dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: existingSubscription });
                console.log('Existing push subscription found:', existingSubscription);
