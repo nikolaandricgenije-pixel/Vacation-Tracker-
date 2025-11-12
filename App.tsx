@@ -12,6 +12,7 @@ import Login from './components/Login';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import QuickActions from './components/QuickActions';
 import ClockWidget from './components/ClockWidget';
+import { WorkType } from './types';
 
 import { registerPushNotifications } from './utils/pushNotifications';
 
@@ -30,10 +31,10 @@ function NotificationActionHandler() {
          // Perform the action
          switch (action) {
             case 'clock-in-office':
-               dispatch({ type: 'CLOCK_IN', payload: { workType: 'Work from office' } });
+               dispatch({ type: 'CLOCK_IN', payload: { workType: WorkType.Office } });
                break;
             case 'clock-in-home':
-               dispatch({ type: 'CLOCK_IN', payload: { workType: 'Work from home' } });
+               dispatch({ type: 'CLOCK_IN', payload: { workType: WorkType.Home } });
                break;
             case 'clock-out':
                dispatch({ type: 'CLOCK_OUT' });
@@ -236,7 +237,7 @@ function AppContent() {
   }, [isLoggedIn, currentUser, dispatch]);
 
 
-  if (!isLoggedIn) {
+  if (!isLoggedIn || !currentUser) {
     return <Login />;
   }
 
