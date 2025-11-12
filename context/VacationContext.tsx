@@ -421,10 +421,12 @@ function vacationReducer(state: State, action: Action): State {
       return state;
     }
     case 'LOGOUT': {
+      // Clear remembered user
+      localStorage.removeItem('rememberedUser');
       return {
         ...state,
-        currentUser: users[0],
-        isLoggedIn: true,
+        currentUser: null,
+        isLoggedIn: false,
         isAdmin: false,
         editingRequest: null,
       };
@@ -523,10 +525,15 @@ export function VacationProvider({ children }: { children: ReactNode }) {
              const existingSubscription = await registration.pushManager.getSubscription();
 
              if (!existingSubscription) {
-               // Subscribe to push notifications (for localhost/development, no VAPID needed)
+               // Fetch VAPID public key from backend
+               const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+               const response = await fetch(`${API_URL}/api/push/vapid-public-key`);
+               const { publicKey } = await response.json();
+
+               // Subscribe to push notifications
                const subscription = await registration.pushManager.subscribe({
                  userVisibleOnly: true,
-                 applicationServerKey: null, // For localhost, can be null
+                 applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource
                });
                dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: subscription });
                console.log('Push subscription created:', subscription);
@@ -602,6 +609,22 @@ export function useVacationDispatch() {
    }
    return context;
  }
+
+// Helper function to convert VAPID key
+const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
 
 // Function to send push notification (for testing/simulating)
 export async function sendPushNotification(type: string, data: any = {}) {
