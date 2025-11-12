@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useVacationState, useVacationDispatch } from '../context/VacationContext';
+import { useVacationState, useVacationDispatch, sendPushNotification } from '../context/VacationContext';
 import { VacationStatus, LeaveType, User } from '../types';
 import Button from './ui/Button';
 import SunIcon from './icons/SunIcon';
@@ -258,8 +258,30 @@ function Header() {
                   >
                     Test Regular Notification
                   </Button>
+                  <Button
+                    onClick={async () => {
+                      const success = await sendPushNotification('morning');
+                      if (!success) {
+                        alert('Push notifications not available. Make sure you enabled them first.');
+                      }
+                    }}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                  >
+                    Test Push Notification (Morning)
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      const success = await sendPushNotification('lunch');
+                      if (!success) {
+                        alert('Push notifications not available. Make sure you enabled them first.');
+                      }
+                    }}
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                  >
+                    Test Push Notification (Lunch)
+                  </Button>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    💡 Push notification actions work only with real push events from server
+                    💡 Push notifications include interactive actions that work when clicked
                   </p>
                 </div>
               </div>

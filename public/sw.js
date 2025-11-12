@@ -128,6 +128,19 @@ self.addEventListener('notificationclick', (event) => {
   clients.openWindow(url);
 });
 
+// Message event for simulating push notifications
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'simulate-push') {
+    const data = event.data.payload;
+    // Simulate push event
+    self.dispatchEvent(new PushEvent('push', {
+      data: {
+        json: () => data,
+      },
+    }));
+  }
+});
+
 // Background sync for offline actions
 self.addEventListener('sync', (event) => {
   if (event.tag === 'background-sync') {

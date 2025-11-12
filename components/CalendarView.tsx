@@ -23,13 +23,20 @@ import { isPublicHoliday } from '../utils/holidays';
 
 
 function CalendarView() {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const { requests } = useVacationState();
+   const [currentMonth, setCurrentMonth] = useState(new Date());
+   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+   const { requests, isAdmin } = useVacationState();
 
-  const approvedVacations = useMemo(() => 
-    requests.filter(req => req.status === VacationStatus.Approved), 
+  const approvedVacations = useMemo(() =>
+    requests.filter(req => req.status === VacationStatus.Approved),
     [requests]
   );
+
+  const getVacationsForDay = (day: Date) => {
+    return approvedVacations.filter(vacation =>
+      isWithinInterval(day, { start: vacation.startDate, end: vacation.endDate })
+    );
+  };
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -54,34 +61,44 @@ function CalendarView() {
   };
   
   const getDayClassName = (day: Date) => {
-    let classes = "flex items-center justify-center h-12 w-12 rounded-full text-sm transition-colors ";
+    let classes = "flex items-center justify-center h-12 w-12 rounded-full text-sm transition-colors relative ";
 
-    const vacationInfo = approvedVacations.find(vacation => 
-        isWithinInterval(day, { start: vacation.startDate, end: vacation.endDate })
-    );
+    const vacationsForDay = getVacationsForDay(day);
+    const hasVacations = vacationsForDay.length > 0;
 
     if (!isSameMonth(day, currentMonth)) {
       classes += "text-slate-400 dark:text-slate-600";
     } else if (isToday(day)) {
-      classes += "bg-blue-600 text-white font-bold";
+      classes += "bg-blue-600 text-white font-bold ring-2 ring-blue-300 dark:ring-blue-500";
     } else if (isPublicHoliday(day)) {
-        classes += "bg-red-200 dark:bg-red-500/30 text-red-800 dark:text-red-300 font-semibold";
-    } else if (vacationInfo) {
-        if (vacationInfo.type === LeaveType.PaidLeave) {
-             classes += " bg-purple-200 dark:bg-purple-500/30 text-purple-800 dark:text-purple-300 font-semibold";
-        } else if (vacationInfo.type === LeaveType.SickLeave) {
-            classes += " bg-orange-200 dark:bg-orange-500/30 text-orange-800 dark:text-orange-300 font-semibold";
-        } else {
-            classes += " bg-green-200 dark:bg-green-500/30 text-green-800 dark:text-green-300 font-semibold";
-        }
+      classes += "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 font-semibold border-2 border-red-300 dark:border-red-700";
     } else if (isWeekend(day)) {
-      classes += "text-slate-500 dark:text-slate-400";
+      classes += "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium";
+    } else if (hasVacations) {
+      // Show vacation colors
+      if (vacationsForDay.some(v => v.type === LeaveType.PaidLeave)) {
+        classes += "bg-purple-200 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 font-semibold border-2 border-purple-300 dark:border-purple-700";
+      } else if (vacationsForDay.some(v => v.type === LeaveType.SickLeave)) {
+        classes += "bg-orange-200 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200 font-semibold border-2 border-orange-300 dark:border-orange-700";
+      } else {
+        classes += "bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 font-semibold border-2 border-green-300 dark:border-green-700";
+      }
     } else {
-       classes += "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700";
+      classes += "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700";
     }
 
+    // Add cursor pointer for clickable days (admin only)
+    if (isAdmin && isSameMonth(day, currentMonth)) {
+      classes += " cursor-pointer";
+    }
 
     return classes;
+  };
+
+  const handleDayClick = (day: Date) => {
+    if (isAdmin && isSameMonth(day, currentMonth)) {
+      setSelectedDay(day);
+    }
   };
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -113,11 +130,127 @@ function CalendarView() {
           <div key={`empty-${index}`} />
         ))}
         {daysInMonth.map(day => (
-          <div key={day.toString()} className={getDayClassName(day)}>
+          <div
+            key={day.toString()}
+            className={getDayClassName(day)}
+            onClick={() => handleDayClick(day)}
+            title={isAdmin ? "Click to view vacation details" : undefined}
+          >
             {format(day, 'd')}
+            {isAdmin && getVacationsForDay(day).length > 0 && (
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-current rounded-full opacity-75"></div>
+            )}
           </div>
         ))}
       </div>
+
+      {/* Vacation Details Modal */}
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">
+                  {format(selectedDay, 'EEEE, MMMM d, yyyy')}
+                </h3>
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              {(() => {
+                const vacations = getVacationsForDay(selectedDay);
+                const isHoliday = isPublicHoliday(selectedDay);
+                const isWeekendDay = isWeekend(selectedDay);
+
+                if (vacations.length === 0 && !isHoliday && !isWeekendDay) {
+                  return (
+                    <p className="text-slate-600 dark:text-slate-400 text-center py-8">
+                      No vacations or special days on this date.
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {isHoliday && (
+                      <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-red-500">🏖️</span>
+                          <span className="font-semibold text-red-800 dark:text-red-200">Public Holiday</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {isWeekendDay && !isHoliday && (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-slate-500">🏠</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">Weekend</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {vacations.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-3">
+                          People on Vacation ({vacations.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {vacations.map((vacation) => (
+                            <div
+                              key={vacation.id}
+                              className={`p-3 rounded-lg border ${
+                                vacation.type === LeaveType.PaidLeave
+                                  ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
+                                  : vacation.type === LeaveType.SickLeave
+                                  ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                                  : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span className={
+                                    vacation.type === LeaveType.PaidLeave ? 'text-purple-600' :
+                                    vacation.type === LeaveType.SickLeave ? 'text-orange-600' :
+                                    'text-green-600'
+                                  }>
+                                    {vacation.type === LeaveType.PaidLeave ? '💰' :
+                                     vacation.type === LeaveType.SickLeave ? '🤒' : '🏖️'}
+                                  </span>
+                                  <span className="font-medium text-slate-800 dark:text-slate-200">
+                                    {vacation.employeeName}
+                                  </span>
+                                </div>
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  vacation.status === VacationStatus.Approved
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                                    : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
+                                }`}>
+                                  {vacation.status}
+                                </span>
+                              </div>
+                              <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                {format(vacation.startDate, 'MMM d')} - {format(vacation.endDate, 'MMM d, yyyy')}
+                                {vacation.notes && (
+                                  <div className="mt-1 italic">"{vacation.notes}"</div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

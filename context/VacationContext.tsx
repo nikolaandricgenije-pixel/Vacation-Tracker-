@@ -4,44 +4,46 @@ import type { Notification as AppNotification } from '../types';
 import { addDays, differenceInMinutes, startOfDay, format } from 'date-fns';
 
 type State = {
-   requests: VacationRequest[];
-   notifications: AppNotification[];
-   isAdmin: boolean;
-   editingRequest: VacationRequest | null;
-   users: User[];
-   currentUser: User | null;
-   isLoggedIn: boolean;
-   theme: 'light' | 'dark';
-   timeEntries: TimeEntry[];
-   notificationPermission: NotificationPermission;
- };
+    requests: VacationRequest[];
+    notifications: AppNotification[];
+    isAdmin: boolean;
+    editingRequest: VacationRequest | null;
+    users: User[];
+    currentUser: User | null;
+    isLoggedIn: boolean;
+    theme: 'light' | 'dark';
+    timeEntries: TimeEntry[];
+    notificationPermission: NotificationPermission;
+    pushSubscription: PushSubscription | null;
+  };
 
 type Action =
-   | { type: 'ADD_REQUEST'; payload: VacationRequest }
-   | { type: 'APPROVE_REQUEST'; payload: { id: string; newStatus?: VacationStatus } }
-   | { type: 'REJECT_REQUEST'; payload: { id: string } }
-   | { type: 'ADD_NOTIFICATION'; payload: AppNotification }
-   | { type: 'REMOVE_NOTIFICATION'; payload: { id: string } }
-   | { type: 'TOGGLE_ADMIN_VIEW' }
-   | { type: 'START_EDIT'; payload: { id: string } }
-   | { type: 'CANCEL_EDIT' }
-   | { type: 'UPDATE_REQUEST'; payload: VacationRequest }
-   | { type: 'DELETE_REQUEST'; payload: { id: string } }
-   | { type: 'SWITCH_USER'; payload: { userName: string } }
-   | { type: 'ADD_USER'; payload: User }
-   | { type: 'TOGGLE_THEME' }
-   | { type: 'CLOCK_IN'; payload: { workType: WorkType } }
-   | { type: 'CLOCK_OUT' }
-   | { type: 'START_BREAK' }
-   | { type: 'END_BREAK' }
-   | { type: 'START_OFF' }
-   | { type: 'END_OFF' }
-   | { type: 'ADD_BUSINESS_TRIP'; payload: { date: Date } }
-   | { type: 'LOGIN'; payload: { userName: string } }
-   | { type: 'LOGOUT' }
-   | { type: 'LOAD_STATE'; payload: State }
-   | { type: 'RESET_DAILY_ENTRIES' }
-   | { type: 'SET_NOTIFICATION_PERMISSION'; payload: NotificationPermission };
+    | { type: 'ADD_REQUEST'; payload: VacationRequest }
+    | { type: 'APPROVE_REQUEST'; payload: { id: string; newStatus?: VacationStatus } }
+    | { type: 'REJECT_REQUEST'; payload: { id: string } }
+    | { type: 'ADD_NOTIFICATION'; payload: AppNotification }
+    | { type: 'REMOVE_NOTIFICATION'; payload: { id: string } }
+    | { type: 'TOGGLE_ADMIN_VIEW' }
+    | { type: 'START_EDIT'; payload: { id: string } }
+    | { type: 'CANCEL_EDIT' }
+    | { type: 'UPDATE_REQUEST'; payload: VacationRequest }
+    | { type: 'DELETE_REQUEST'; payload: { id: string } }
+    | { type: 'SWITCH_USER'; payload: { userName: string } }
+    | { type: 'ADD_USER'; payload: User }
+    | { type: 'TOGGLE_THEME' }
+    | { type: 'CLOCK_IN'; payload: { workType: WorkType } }
+    | { type: 'CLOCK_OUT' }
+    | { type: 'START_BREAK' }
+    | { type: 'END_BREAK' }
+    | { type: 'START_OFF' }
+    | { type: 'END_OFF' }
+    | { type: 'ADD_BUSINESS_TRIP'; payload: { date: Date } }
+    | { type: 'LOGIN'; payload: { userName: string } }
+    | { type: 'LOGOUT' }
+    | { type: 'LOAD_STATE'; payload: State }
+    | { type: 'RESET_DAILY_ENTRIES' }
+    | { type: 'SET_NOTIFICATION_PERMISSION'; payload: NotificationPermission }
+    | { type: 'SET_PUSH_SUBSCRIPTION'; payload: PushSubscription | null };
   
 const users: User[] = [
     { name: 'Nikola Andrić', roles: ['Admin', 'Employee'], vacationDays: 25, paidLeaveDays: 7 },
@@ -53,9 +55,10 @@ const users: User[] = [
 
 const today = new Date();
 const initialState: State = {
-   timeEntries: [],
-   notificationPermission: 'default',
-   requests: [
+    timeEntries: [],
+    notificationPermission: 'default',
+    pushSubscription: null,
+    requests: [
      {
        id: '1',
        employeeName: 'Nikola Andrić',
@@ -441,6 +444,11 @@ function vacationReducer(state: State, action: Action): State {
         ...state,
         notificationPermission: action.payload,
       };
+    case 'SET_PUSH_SUBSCRIPTION':
+      return {
+        ...state,
+        pushSubscription: action.payload,
+      };
     default:
       return state;
   }
@@ -496,15 +504,43 @@ export function VacationProvider({ children }: { children: ReactNode }) {
      }
    }, []);
 
-   // Request notification permission
+   // Request notification permission and subscribe to push notifications
    useEffect(() => {
-     if ('Notification' in window) {
+     if ('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window) {
        dispatch({ type: 'SET_NOTIFICATION_PERMISSION', payload: Notification.permission });
-       if (Notification.permission === 'default') {
-         Notification.requestPermission().then(permission => {
+
+       const setupNotifications = async () => {
+         // Request permission if not granted
+         let permission = Notification.permission;
+         if (permission === 'default') {
+           permission = await Notification.requestPermission();
            dispatch({ type: 'SET_NOTIFICATION_PERMISSION', payload: permission });
-         });
-       }
+         }
+
+         if (permission === 'granted') {
+           try {
+             const registration = await navigator.serviceWorker.ready;
+             const existingSubscription = await registration.pushManager.getSubscription();
+
+             if (!existingSubscription) {
+               // Subscribe to push notifications (for localhost/development, no VAPID needed)
+               const subscription = await registration.pushManager.subscribe({
+                 userVisibleOnly: true,
+                 applicationServerKey: null, // For localhost, can be null
+               });
+               dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: subscription });
+               console.log('Push subscription created:', subscription);
+             } else {
+               dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: existingSubscription });
+               console.log('Existing push subscription found:', existingSubscription);
+             }
+           } catch (error) {
+             console.error('Error setting up push notifications:', error);
+           }
+         }
+       };
+
+       setupNotifications();
      }
    }, []);
 
@@ -560,9 +596,40 @@ export function useVacationState() {
 }
 
 export function useVacationDispatch() {
-  const context = useContext(VacationDispatchContext);
-  if (context === undefined) {
-    throw new Error('useVacationDispatch must be used within a VacationProvider');
+   const context = useContext(VacationDispatchContext);
+   if (context === undefined) {
+     throw new Error('useVacationDispatch must be used within a VacationProvider');
+   }
+   return context;
+ }
+
+// Function to send push notification (for testing/simulating)
+export async function sendPushNotification(type: string, data: any = {}) {
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        // For localhost/development, we can simulate push by calling the service worker directly
+        // In production, this would be sent to your server which would then push to the subscription
+        const message = {
+          type,
+          ...data,
+        };
+
+        // Simulate push by posting message to service worker
+        registration.active?.postMessage({
+          action: 'simulate-push',
+          payload: message,
+        });
+
+        console.log('Push notification simulated:', message);
+        return true;
+      }
+    } catch (error) {
+      console.error('Error sending push notification:', error);
+    }
   }
-  return context;
+  return false;
 }
