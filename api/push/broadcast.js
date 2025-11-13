@@ -1,4 +1,4 @@
-const webPush = require('web-push');
+import webPush from 'web-push';
 
 const subscriptions = new Map();
 

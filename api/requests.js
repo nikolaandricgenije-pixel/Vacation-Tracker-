@@ -1,6 +1,6 @@
-const { db } = require('../drizzle/db.js');
-const { vacationRequests } = require('../drizzle/schema.js');
-const { eq, desc } = require('drizzle-orm');
+import { db } from '../drizzle/db.js';
+import { vacationRequests } from '../drizzle/schema.js';
+import { eq, desc } from 'drizzle-orm';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {

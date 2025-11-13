@@ -1,3 +1,7 @@
+import { db } from '../../../drizzle/db.js';
+import { users } from '../../../drizzle/schema.js';
+import { eq } from 'drizzle-orm';
+
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { code } = req.query;
@@ -49,9 +53,6 @@ export default async function handler(req, res) {
         }
 
         // Store Discord connection in database
-        const { db } = require('../../../drizzle/db.js');
-        const { users } = require('../../../drizzle/schema.js');
-        const { eq } = require('drizzle-orm');
 
         // Find or create user
         let user = await db.select().from(users).where(eq(users.email, userData.email)).limit(1);

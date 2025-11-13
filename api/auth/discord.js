@@ -3,9 +3,9 @@ const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const REDIRECT_URI = process.env.DISCORD_CALLBACK_URL;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-const { db } = require('../../../drizzle/db.js');
-const { users } = require('../../../drizzle/schema.js');
-const { eq } = require('drizzle-orm');
+import { db } from '../../../drizzle/db.js';
+import { users } from '../../../drizzle/schema.js';
+import { eq } from 'drizzle-orm';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {

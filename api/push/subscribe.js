@@ -1,7 +1,7 @@
-const webPush = require('web-push');
-const { db } = require('../../drizzle/db.js');
-const { users } = require('../../drizzle/schema.js');
-const { eq } = require('drizzle-orm');
+import webPush from 'web-push';
+import { db } from '../../drizzle/db.js';
+import { users } from '../../drizzle/schema.js';
+import { eq } from 'drizzle-orm';
 
 const vapidKeys = {
   publicKey: process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nqm-UI',

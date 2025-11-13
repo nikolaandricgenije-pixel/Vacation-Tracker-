@@ -1,3 +1,7 @@
+import { db } from '../../../drizzle/db.js';
+import { users, vacationRequests, timeEntries } from '../../../drizzle/schema.js';
+import { eq, and, gte } from 'drizzle-orm';
+
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
@@ -33,9 +37,6 @@ export default async function handler(req, res) {
             }
 
             // Find user in database
-            const { db } = require('../../../drizzle/db.js');
-            const { users, vacationRequests, timeEntries } = require('../../../drizzle/schema.js');
-            const { eq, and, gte } = require('drizzle-orm');
 
             const dbUser = await db.select().from(users).where(eq(users.discordId, discordUserId)).limit(1);
 
@@ -150,7 +151,6 @@ export default async function handler(req, res) {
             weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
             weekStart.setHours(0, 0, 0, 0);
 
-            const { timeEntries } = require('../../../drizzle/schema.js');
             const weekEntries = await db.select()
               .from(timeEntries)
               .where(and(
