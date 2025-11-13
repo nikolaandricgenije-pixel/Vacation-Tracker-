@@ -18,6 +18,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('[DEBUG] Starting Discord OAuth callback process');
+
     const clientId = process.env.DISCORD_CLIENT_ID;
     const clientSecret = process.env.DISCORD_CLIENT_SECRET;
     const redirectUri = process.env.DISCORD_CALLBACK_URL;
@@ -26,8 +28,14 @@ export default async function handler(req, res) {
       hasClientId: !!clientId,
       hasClientSecret: !!clientSecret,
       hasRedirectUri: !!redirectUri,
-      redirectUri
+      redirectUri,
+      databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Missing'
     });
+
+    if (!process.env.DATABASE_URL) {
+      console.error('[DEBUG] DATABASE_URL is missing!');
+      return res.status(500).json({ error: 'Database configuration missing' });
+    }
 
     if (!clientId || !clientSecret || !redirectUri) {
       console.error('[DEBUG] Missing Discord credentials');
