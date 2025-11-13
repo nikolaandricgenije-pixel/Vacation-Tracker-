@@ -9,7 +9,6 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import UserManagement from './components/UserManagement';
 import TimeTracker from './components/TimeTracker';
 import Login from './components/Login';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
 import QuickActions from './components/QuickActions';
 import ClockWidget from './components/ClockWidget';
 import { WorkType } from './types';
@@ -361,7 +360,6 @@ function AppContent() {
           </main>
         </div>
       </div>
-      <PWAInstallPrompt />
     </>
   );
 }

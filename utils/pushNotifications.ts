@@ -1,8 +1,4 @@
-import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
-import { Capacitor } from '@capacitor/core';
-
 const API_URL = import.meta.env.VITE_API_URL || '';
-const isNative = Capacitor.isNativePlatform();
 
 export interface NotificationData {
   type?: string;
@@ -12,51 +8,7 @@ export interface NotificationData {
 }
 
 export const registerPushNotifications = async (): Promise<boolean> => {
-  if (isNative) {
-    return await registerNativePush();
-  } else {
-    return await registerWebPush();
-  }
-};
-
-const registerNativePush = async (): Promise<boolean> => {
-  try {
-    let permStatus = await PushNotifications.checkPermissions();
-
-    if (permStatus.receive === 'prompt') {
-      permStatus = await PushNotifications.requestPermissions();
-    }
-
-    if (permStatus.receive !== 'granted') {
-      console.log('Push notification permission denied');
-      return false;
-    }
-
-    await PushNotifications.register();
-
-    PushNotifications.addListener('registration', async (token: Token) => {
-      console.log('Push registration success, token: ' + token.value);
-      await saveTokenToBackend(token.value);
-    });
-
-    PushNotifications.addListener('registrationError', (error: any) => {
-      console.error('Error on registration: ' + JSON.stringify(error));
-    });
-
-    PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
-      console.log('Push notification received: ', notification);
-    });
-
-    PushNotifications.addListener('pushNotificationActionPerformed', (notification: ActionPerformed) => {
-      console.log('Push notification action performed', notification.actionId, notification.inputValue);
-      handleNotificationAction(notification.actionId);
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Error registering native push notifications:', error);
-    return false;
-  }
+  return await registerWebPush();
 };
 
 const registerWebPush = async (): Promise<boolean> => {
@@ -88,19 +40,6 @@ const registerWebPush = async (): Promise<boolean> => {
   } catch (error) {
     console.error('Error registering web push notifications:', error);
     return false;
-  }
-};
-
-const saveTokenToBackend = async (token: string): Promise<void> => {
-  try {
-    const userId = localStorage.getItem('user_email') || 'anonymous';
-    await fetch(`${API_URL}/api/push/subscribe`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, userId, platform: 'mobile' })
-    });
-  } catch (error) {
-    console.error('Error saving token to backend:', error);
   }
 };
 
@@ -141,7 +80,7 @@ export const sendPushNotification = async (data: NotificationData): Promise<bool
 };
 
 export const simulatePushNotification = async (type: string = 'general'): Promise<boolean> => {
-  if (!isNative && 'serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator) {
     const registration = await navigator.serviceWorker.ready;
     registration.active?.postMessage({
       action: 'simulate-push',
@@ -150,12 +89,6 @@ export const simulatePushNotification = async (type: string = 'general'): Promis
     return true;
   }
   return false;
-};
-
-const handleNotificationAction = (action: string) => {
-  const params = new URLSearchParams(window.location.search);
-  params.set('notification_action', action);
-  window.location.search = params.toString();
 };
 
 const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
@@ -174,9 +107,7 @@ const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
 };
 
 export const unregisterPushNotifications = async (): Promise<void> => {
-  if (isNative) {
-    await PushNotifications.removeAllListeners();
-  } else if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator) {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
     if (subscription) {
