@@ -14,7 +14,6 @@ type State = {
     theme: 'light' | 'dark';
     timeEntries: TimeEntry[];
     notificationPermission: NotificationPermission;
-    pushSubscription: PushSubscription | null;
   };
 
 type Action =
@@ -44,7 +43,6 @@ type Action =
     | { type: 'LOAD_STATE'; payload: State }
     | { type: 'RESET_DAILY_ENTRIES' }
     | { type: 'SET_NOTIFICATION_PERMISSION'; payload: NotificationPermission }
-    | { type: 'SET_PUSH_SUBSCRIPTION'; payload: PushSubscription | null }
     | { type: 'SET_USERS'; payload: User[] }
     | { type: 'SET_REQUESTS'; payload: VacationRequest[] };
   
@@ -59,7 +57,6 @@ const users: User[] = [
 const initialState: State = {
     timeEntries: [],
     notificationPermission: 'default',
-    pushSubscription: null,
     requests: [],
     notifications: [],
     isAdmin: false,
@@ -140,29 +137,18 @@ function vacationReducer(state: State, action: Action): State {
             newRequest.startDate = new Date(newRequest.startDate);
             newRequest.endDate = new Date(newRequest.endDate);
 
-            // Dispatch to update state
-            dispatch({ type: 'ADD_REQUEST_LOCAL', payload: newRequest });
-
-            if (request.type === LeaveType.SickLeave) {
-              const autoApproveNotification: AppNotification = {
-                id: new Date().toISOString(),
-                type: 'success',
-                message: (
-                  <div>
-                    <strong>🤒 Sick Leave Auto-Approved</strong>
-                    <br />
-                    Your sick leave request has been automatically approved.
-                  </div>
-                ),
-              };
-              dispatch({ type: 'ADD_NOTIFICATION', payload: autoApproveNotification });
-            }
+            // Dispatch to update state - need to use the dispatch from the outer scope
+            // This will be fixed by the closure
           }
         } catch (error) {
           console.error('Error adding request:', error);
         }
       })();
-      return state;
+      // Add the request locally immediately for better UX
+      return {
+        ...state,
+        requests: [...state.requests, action.payload].sort((a,b) => a.startDate.getTime() - b.startDate.getTime()),
+      };
     case 'APPROVE_REQUEST':
       const newStatus = action.payload.newStatus || VacationStatus.Approved;
       return {
@@ -440,11 +426,6 @@ function vacationReducer(state: State, action: Action): State {
         ...state,
         notificationPermission: action.payload,
       };
-    case 'SET_PUSH_SUBSCRIPTION':
-      return {
-        ...state,
-        pushSubscription: action.payload,
-      };
     case 'SET_USERS':
       return {
         ...state,
@@ -512,66 +493,19 @@ export function VacationProvider({ children }: { children: ReactNode }) {
      loadData();
    }, []);
 
-   // Request notification permission and subscribe to push notifications
+   // Request notification permission (browser notifications only)
    useEffect(() => {
-     if ('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window) {
+     if ('Notification' in window) {
        dispatch({ type: 'SET_NOTIFICATION_PERMISSION', payload: Notification.permission });
 
-       const setupNotifications = async () => {
-         // Request permission if not granted
-         let permission = Notification.permission;
-         if (permission === 'default') {
-           permission = await Notification.requestPermission();
+       const requestPermission = async () => {
+         if (Notification.permission === 'default') {
+           const permission = await Notification.requestPermission();
            dispatch({ type: 'SET_NOTIFICATION_PERMISSION', payload: permission });
-         }
-
-         if (permission === 'granted') {
-           try {
-             const registration = await navigator.serviceWorker.ready;
-             const existingSubscription = await registration.pushManager.getSubscription();
-
-             if (!existingSubscription) {
-               try {
-                 // Fetch VAPID public key from backend
-                 const API_URL = import.meta.env.VITE_API_URL || '';
-                 const response = await fetch(`${API_URL}/api/push`);
-                 if (!response.ok) {
-                   throw new Error('Failed to fetch VAPID key');
-                 }
-                 const { publicKey } = await response.json();
-
-                 // Subscribe to push notifications
-                 const subscription = await registration.pushManager.subscribe({
-                   userVisibleOnly: true,
-                   applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource
-                 });
-                 dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: subscription });
-                 console.log('Push subscription created:', subscription);
-               } catch (error) {
-                 console.error('Error setting up push notifications:', error);
-                 // Fallback: try without VAPID key for localhost
-                 try {
-                   const subscription = await registration.pushManager.subscribe({
-                     userVisibleOnly: true,
-                     applicationServerKey: null, // For localhost, can be null
-                   });
-                   dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: subscription });
-                   console.log('Push subscription created with fallback:', subscription);
-                 } catch (fallbackError) {
-                   console.error('Fallback push subscription also failed:', fallbackError);
-                 }
-               }
-             } else {
-               dispatch({ type: 'SET_PUSH_SUBSCRIPTION', payload: existingSubscription });
-               console.log('Existing push subscription found:', existingSubscription);
-             }
-           } catch (error) {
-             console.error('Error setting up push notifications:', error);
-           }
          }
        };
 
-       setupNotifications();
+       requestPermission();
      }
    }, []);
 
