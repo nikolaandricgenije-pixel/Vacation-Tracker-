@@ -4,7 +4,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api|_next|assets|favicon|manifest|sw|.*\\.).*)",
       "destination": "/index.html"
     }
   ],
