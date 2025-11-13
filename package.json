@@ -18,11 +18,13 @@
   "dependencies": {
     "@capacitor/push-notifications": "^5.1.2",
     "@emailjs/browser": "^3.11.0",
+    "@neondatabase/serverless": "^1.0.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "date-fns": "^2.30.0",
     "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.7",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "jsonwebtoken": "^9.0.2",

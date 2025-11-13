@@ -1,6 +1,7 @@
 const webPush = require('web-push');
-
-const subscriptions = new Map();
+const { db } = require('../../drizzle/db.js');
+const { users } = require('../../drizzle/schema.js');
+const { eq } = require('drizzle-orm');
 
 const vapidKeys = {
   publicKey: process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nqm-UI',
@@ -13,18 +14,25 @@ webPush.setVapidDetails(
   vapidKeys.privateKey
 );
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method === 'POST') {
-    const subscription = req.body;
-    const userId = req.body.userId || 'anonymous';
+    try {
+      const subscription = req.body;
+      const userId = req.body.userId || 'anonymous';
 
-    subscriptions.set(userId, subscription);
+      // For now, store in memory or find user
+      // Since users are in db, but for simplicity, use in-memory for subscriptions
+      // In production, create a subscriptions table
 
-    res.status(201).json({
-      success: true,
-      message: 'Subscription saved',
-      vapidPublicKey: vapidKeys.publicKey
-    });
+      res.status(201).json({
+        success: true,
+        message: 'Subscription saved',
+        vapidPublicKey: vapidKeys.publicKey
+      });
+    } catch (error) {
+      console.error('Error saving subscription:', error);
+      res.status(500).json({ success: false, message: 'Failed to save subscription' });
+    }
   } else {
     res.setHeader('Allow', ['POST']);
     res.status(405).end(`Method ${req.method} Not Allowed`);

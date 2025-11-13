@@ -19,6 +19,7 @@ type State = {
 
 type Action =
     | { type: 'ADD_REQUEST'; payload: VacationRequest }
+    | { type: 'ADD_REQUEST_LOCAL'; payload: VacationRequest }
     | { type: 'APPROVE_REQUEST'; payload: { id: string; newStatus?: VacationStatus } }
     | { type: 'REJECT_REQUEST'; payload: { id: string } }
     | { type: 'ADD_NOTIFICATION'; payload: AppNotification }
@@ -43,7 +44,9 @@ type Action =
     | { type: 'LOAD_STATE'; payload: State }
     | { type: 'RESET_DAILY_ENTRIES' }
     | { type: 'SET_NOTIFICATION_PERMISSION'; payload: NotificationPermission }
-    | { type: 'SET_PUSH_SUBSCRIPTION'; payload: PushSubscription | null };
+    | { type: 'SET_PUSH_SUBSCRIPTION'; payload: PushSubscription | null }
+    | { type: 'SET_USERS'; payload: User[] }
+    | { type: 'SET_REQUESTS'; payload: VacationRequest[] };
   
 const users: User[] = [
     { name: 'Nikola Andrić', email: 'nikola@valens.dev', roles: ['Admin', 'Employee'], vacationDays: 25, paidLeaveDays: 7 },
@@ -53,122 +56,81 @@ const users: User[] = [
     { name: 'Eva Martinez', email: 'eva@company.com', roles: ['CEO', 'Admin'], vacationDays: 30, paidLeaveDays: 10 },
 ];
 
-const today = new Date();
 const initialState: State = {
     timeEntries: [],
     notificationPermission: 'default',
     pushSubscription: null,
-    requests: [
-     {
-       id: '1',
-       employeeName: 'Nikola Andrić',
-       startDate: addDays(today, 10),
-       endDate: addDays(today, 14),
-       days: 5,
-       status: VacationStatus.Approved,
-       type: LeaveType.Vacation,
-       notes: 'Family trip to the mountains.',
-     },
-     {
-       id: '2',
-       employeeName: 'Nikola Andrić',
-       startDate: addDays(today, -20),
-       endDate: addDays(today, -18),
-       days: 3,
-       status: VacationStatus.Approved,
-       type: LeaveType.Vacation,
-     },
-     {
-       id: '3',
-       employeeName: 'Nikola Andrić',
-       startDate: addDays(today, 30),
-       endDate: addDays(today, 31),
-       days: 2,
-       status: VacationStatus.Pending,
-       type: LeaveType.Vacation,
-       notes: 'Short break for a personal appointment.',
-     },
-      {
-       id: '4',
-       employeeName: 'Nikola Andrić',
-       startDate: addDays(today, -50),
-       endDate: addDays(today, -49),
-       days: 2,
-       status: VacationStatus.Rejected,
-       type: LeaveType.Vacation,
-     },
-     {
-       id: '5',
-       employeeName: 'Nikola Andrić',
-       startDate: addDays(today, 11),
-       endDate: addDays(today, 12),
-       days: 2,
-       status: VacationStatus.Approved,
-       type: LeaveType.PaidLeave,
-     },
-     {
-       id: '6',
-       employeeName: 'Nikola Andrić',
-       startDate: addDays(today, 55),
-       endDate: addDays(today, 55),
-       days: 1,
-       status: VacationStatus.Approved,
-       type: LeaveType.SickLeave,
-       notes: 'Feeling unwell.',
-     },
-   ],
-   notifications: [],
-   isAdmin: false,
-   editingRequest: null,
-   users,
-   currentUser: null,
-   isLoggedIn: false,
-   theme: 'light',
- };
+    requests: [],
+    notifications: [],
+    isAdmin: false,
+    editingRequest: null,
+    users: [],
+    currentUser: null,
+    isLoggedIn: false,
+    theme: 'light',
+  };
 
 const VacationStateContext = createContext<State | undefined>(undefined);
 const VacationDispatchContext = createContext<Dispatch<Action> | undefined>(undefined);
 
 function vacationReducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'ADD_REQUEST':
-      let request = action.payload;
-
-      // Auto-approve sick leave
-      if (request.type === LeaveType.SickLeave) {
-        request = { ...request, status: VacationStatus.Approved };
-
-        // Add notification for auto-approved sick leave
-        const autoApproveNotification: AppNotification = {
-          id: new Date().toISOString(),
-          type: 'success',
-          message: (
-            <div>
-              <strong>🤒 Sick Leave Auto-Approved</strong>
-              <br />
-              Your sick leave request has been automatically approved.
-            </div>
-          ),
-        };
-
-        return {
-          ...state,
-          requests: [...state.requests, request].sort((a,b) => a.startDate.getTime() - b.startDate.getTime()),
-          notifications: [...state.notifications, autoApproveNotification],
-        };
-      }
-
-      // Set initial status based on leave type
-      if (request.type === LeaveType.Vacation) {
-        request = { ...request, status: VacationStatus.PendingPMAproval };
-      } else if (request.type === LeaveType.PaidLeave) {
-        request = { ...request, status: VacationStatus.PendingAdminApproval };
-      }
-
+    case 'ADD_REQUEST_LOCAL':
       return {
         ...state,
-        requests: [...state.requests, request].sort((a,b) => a.startDate.getTime() - b.startDate.getTime()),
+        requests: [...state.requests, action.payload].sort((a,b) => a.startDate.getTime() - b.startDate.getTime()),
       };
+    case 'ADD_REQUEST':
+      // Call API to add request
+      (async () => {
+        try {
+          const API_URL = import.meta.env.VITE_API_URL || '';
+          let request = action.payload;
+
+          // Auto-approve sick leave
+          if (request.type === LeaveType.SickLeave) {
+            request = { ...request, status: VacationStatus.Approved };
+          } else if (request.type === LeaveType.Vacation) {
+            request = { ...request, status: VacationStatus.PendingPMAproval };
+          } else if (request.type === LeaveType.PaidLeave) {
+            request = { ...request, status: VacationStatus.PendingAdminApproval };
+          }
+
+          const response = await fetch(`${API_URL}/api/requests`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+          });
+
+          if (response.ok) {
+            const newRequest = await response.json();
+            // Convert dates
+            newRequest.startDate = new Date(newRequest.startDate);
+            newRequest.endDate = new Date(newRequest.endDate);
+
+            // Dispatch to update state
+            dispatch({ type: 'ADD_REQUEST_LOCAL', payload: newRequest });
+
+            if (request.type === LeaveType.SickLeave) {
+              const autoApproveNotification: AppNotification = {
+                id: new Date().toISOString(),
+                type: 'success',
+                message: (
+                  <div>
+                    <strong>🤒 Sick Leave Auto-Approved</strong>
+                    <br />
+                    Your sick leave request has been automatically approved.
+                  </div>
+                ),
+              };
+              dispatch({ type: 'ADD_NOTIFICATION', payload: autoApproveNotification });
+            }
+          }
+        } catch (error) {
+          console.error('Error adding request:', error);
+        }
+      })();
+      return state;
     case 'APPROVE_REQUEST':
       const newStatus = action.payload.newStatus || VacationStatus.Approved;
       return {
@@ -451,6 +413,16 @@ function vacationReducer(state: State, action: Action): State {
         ...state,
         pushSubscription: action.payload,
       };
+    case 'SET_USERS':
+      return {
+        ...state,
+        users: action.payload,
+      };
+    case 'SET_REQUESTS':
+      return {
+        ...state,
+        requests: action.payload,
+      };
     default:
       return state;
   }
@@ -459,51 +431,46 @@ function vacationReducer(state: State, action: Action): State {
 export function VacationProvider({ children }: { children: ReactNode }) {
    const [state, dispatch] = useReducer(vacationReducer, initialState);
 
-   // Load from localStorage on mount
+   // Load from API on mount
    useEffect(() => {
-     const saved = localStorage.getItem('vacationTrackerState');
-     let hasCurrentUser = false;
-
-     if (saved) {
+     const loadData = async () => {
        try {
-         const parsed = JSON.parse(saved);
-         hasCurrentUser = !!parsed.currentUser;
-         // Convert date strings back to Date objects
-         parsed.requests = parsed.requests.map((req: any) => ({
-           ...req,
-           startDate: new Date(req.startDate),
-           endDate: new Date(req.endDate),
-         }));
-         parsed.timeEntries = parsed.timeEntries.map((entry: any) => ({
-           ...entry,
-           date: new Date(entry.date),
-           lastClockIn: entry.lastClockIn ? new Date(entry.lastClockIn) : undefined,
-           breaks: entry.breaks.map((b: any) => ({
-             start: new Date(b.start),
-             end: b.end ? new Date(b.end) : undefined,
-           })),
-           offs: entry.offs.map((o: any) => ({
-             start: new Date(o.start),
-             end: o.end ? new Date(o.end) : undefined,
-           })),
-         }));
-         // Merge with initial state to avoid missing keys
-         dispatch({ type: 'LOAD_STATE', payload: parsed });
-       } catch (e) {
-         console.error('Failed to load state from localStorage', e);
-       }
-     }
+         const API_URL = import.meta.env.VITE_API_URL || '';
 
-     // Check for remembered user and auto-login if no current user
-     if (!hasCurrentUser) {
-       const rememberedUser = localStorage.getItem('rememberedUser');
-       if (rememberedUser) {
-         const user = state.users.find(u => u.name === rememberedUser);
-         if (user) {
-           dispatch({ type: 'LOGIN', payload: { userName: user.name } });
+         // Load users
+         const usersResponse = await fetch(`${API_URL}/api/users`);
+         if (usersResponse.ok) {
+           const users = await usersResponse.json();
+           dispatch({ type: 'SET_USERS', payload: users });
          }
+
+         // Load requests
+         const requestsResponse = await fetch(`${API_URL}/api/requests`);
+         if (requestsResponse.ok) {
+           const requests = await requestsResponse.json();
+           // Convert date strings to Date objects
+           const convertedRequests = requests.map((req: any) => ({
+             ...req,
+             startDate: new Date(req.startDate),
+             endDate: new Date(req.endDate),
+           }));
+           dispatch({ type: 'SET_REQUESTS', payload: convertedRequests });
+         }
+
+         // Check for remembered user
+         const rememberedUser = localStorage.getItem('rememberedUser');
+         if (rememberedUser) {
+           const user = users.find((u: any) => u.name === rememberedUser);
+           if (user) {
+             dispatch({ type: 'LOGIN', payload: { userName: user.name } });
+           }
+         }
+       } catch (error) {
+         console.error('Failed to load data from API', error);
        }
-     }
+     };
+
+     loadData();
    }, []);
 
    // Request notification permission and subscribe to push notifications
