@@ -41,7 +41,7 @@ const DiscordStatus: React.FC = () => {
   }, [currentUser.email]);
 
   const handleLoginWithDiscord = () => {
-    window.location.href = '/api/auth/discord';
+    window.location.href = '/api/auth?action=discord';
   };
 
   if (loading) {
