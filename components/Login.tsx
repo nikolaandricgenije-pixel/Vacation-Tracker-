@@ -12,22 +12,12 @@ function Login() {
 
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
-        const discordToken = urlParams.get('discord_token');
-        const userName = urlParams.get('user_name');
+        const discordLogin = urlParams.get('discord_login');
         const userEmail = urlParams.get('user_email');
 
-        if (discordToken && userName) {
-            localStorage.setItem('discord_token', discordToken);
-            localStorage.setItem('user_email', userEmail || '');
-
-            let user = users.find(u => u.name === userName);
-            if (!user && userEmail) {
-                const emailLower = userEmail.toLowerCase();
-                if (emailLower === 'user@discord.com') {
-                    user = users[0]; // Default to first user
-                }
-            }
-            if (!user) user = users[0];
+        if (discordLogin === 'success' && userEmail) {
+            // Find user by email (should be loaded from database)
+            const user = users.find(u => u.email.toLowerCase() === userEmail.toLowerCase());
 
             if (user) {
                 dispatch({ type: 'LOGIN', payload: { userName: user.name } });

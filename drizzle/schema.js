@@ -4,6 +4,7 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
+  discordId: text('discord_id'),
   roles: jsonb('roles').notNull(),
   vacationDays: integer('vacation_days').notNull(),
   paidLeaveDays: integer('paid_leave_days').notNull(),

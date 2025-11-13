@@ -76,6 +76,38 @@ const VacationDispatchContext = createContext<Dispatch<Action> | undefined>(unde
 function vacationReducer(state: State, action: Action): State {
   switch (action.type) {
     case 'ADD_REQUEST_LOCAL':
+      // Send Discord notification for new request
+      (async () => {
+        try {
+          const API_URL = import.meta.env.VITE_API_URL || '';
+          const request = action.payload;
+
+          const embed = {
+            title: 'New Vacation Request',
+            description: `${request.employeeName} submitted a ${request.type} request`,
+            fields: [
+              { name: 'Type', value: request.type, inline: true },
+              { name: 'Days', value: request.days.toString(), inline: true },
+              { name: 'Start Date', value: request.startDate.toLocaleDateString(), inline: true },
+              { name: 'End Date', value: request.endDate.toLocaleDateString(), inline: true },
+              { name: 'Status', value: request.status, inline: true },
+            ],
+            color: request.type === LeaveType.Vacation ? 0x00ff00 : request.type === LeaveType.SickLeave ? 0xff0000 : 0x0000ff,
+            timestamp: new Date().toISOString(),
+          };
+
+          await fetch(`${API_URL}/api/discord/webhook`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              embeds: [embed],
+            }),
+          });
+        } catch (error) {
+          console.error('Failed to send Discord notification:', error);
+        }
+      })();
+
       return {
         ...state,
         requests: [...state.requests, action.payload].sort((a,b) => a.startDate.getTime() - b.startDate.getTime()),
