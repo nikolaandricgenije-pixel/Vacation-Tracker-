@@ -311,9 +311,15 @@ function vacationReducer(state: State, action: Action): State {
       const today = startOfDay(new Date());
       const existing = state.timeEntries.find(e => e.employeeName === state.currentUser.name && e.date.getTime() === today.getTime());
       if (existing) {
+        const breakStart = new Date();
+        const breakEnd = new Date(breakStart.getTime() + 60 * 60 * 1000); // 60 minutes from now
+
         return {
           ...state,
-          timeEntries: state.timeEntries.map(e => e.id === existing.id ? { ...e, breaks: [...e.breaks, { start: new Date() }] } : e)
+          timeEntries: state.timeEntries.map(e => e.id === existing.id ? {
+            ...e,
+            breaks: [...e.breaks, { start: breakStart, end: breakEnd }]
+          } : e)
         };
       }
       return state;

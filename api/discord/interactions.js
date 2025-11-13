@@ -337,6 +337,121 @@ export default async function handler(req, res) {
               }
             });
 
+          case 'start-off':
+            const discordUserId6 = user?.id;
+            const dbUser6 = await db.select().from(users).where(eq(users.discordId, discordUserId6)).limit(1);
+
+            if (dbUser6.length === 0) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: 'Your Discord account is not linked.',
+                  flags: 64
+                }
+              });
+            }
+
+            const today3 = new Date();
+            today3.setHours(0, 0, 0, 0);
+            const entry2 = await db.select()
+              .from(timeEntries)
+              .where(and(
+                eq(timeEntries.employeeName, dbUser6[0].name),
+                eq(timeEntries.date, today3)
+              )).limit(1);
+
+            if (entry2.length === 0 || !entry2[0].isClockedIn) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '❌ You are not clocked in today!',
+                  flags: 64
+                }
+              });
+            }
+
+            if (entry2[0].offs.some(o => !o.end)) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '❌ You are already in off-duty mode!',
+                  flags: 64
+                }
+              });
+            }
+
+            await db.update(timeEntries)
+              .set({ offs: [...entry2[0].offs, { start: new Date() }] })
+              .where(eq(timeEntries.id, entry2[0].id));
+
+            return res.status(200).json({
+              type: 4,
+              data: {
+                content: '⏸️ Started off-duty period. Timer paused.',
+                flags: 64
+              }
+            });
+
+          case 'end-off':
+            const discordUserId7 = user?.id;
+            const dbUser7 = await db.select().from(users).where(eq(users.discordId, discordUserId7)).limit(1);
+
+            if (dbUser7.length === 0) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: 'Your Discord account is not linked.',
+                  flags: 64
+                }
+              });
+            }
+
+            const today4 = new Date();
+            today4.setHours(0, 0, 0, 0);
+            const entry3 = await db.select()
+              .from(timeEntries)
+              .where(and(
+                eq(timeEntries.employeeName, dbUser7[0].name),
+                eq(timeEntries.date, today4)
+              )).limit(1);
+
+            if (entry3.length === 0 || !entry3[0].isClockedIn) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '❌ You are not clocked in today!',
+                  flags: 64
+                }
+              });
+            }
+
+            const offs = [...entry3[0].offs];
+            const lastOff = offs[offs.length - 1];
+
+            if (!lastOff || lastOff.end) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '❌ You are not in off-duty mode!',
+                  flags: 64
+                }
+              });
+            }
+
+            lastOff.end = new Date();
+
+            await db.update(timeEntries)
+              .set({ offs })
+              .where(eq(timeEntries.id, entry3[0].id));
+
+            return res.status(200).json({
+              type: 4,
+              data: {
+                content: '▶️ Ended off-duty period. Timer resumed.',
+                flags: 64
+              }
+            });
+
           default:
             return res.status(200).json({
               type: 4,

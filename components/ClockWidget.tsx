@@ -6,8 +6,11 @@ import ClockIcon from './icons/ClockIcon';
 import { format, differenceInSeconds, startOfDay, isAfter } from 'date-fns';
 
 const RefreshIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+    <path d="M21 3v5h-5"/>
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+    <path d="M8 16H3v5"/>
   </svg>
 );
 
@@ -33,6 +36,18 @@ function ClockWidget() {
     return () => clearInterval(timer);
   }, []);
 
+
+  // Auto-refresh data every 30 seconds to sync with Discord commands
+  useEffect(() => {
+    const autoRefresh = setInterval(() => {
+      if (currentUser) {
+        handleRefresh();
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(autoRefresh);
+  }, [currentUser]);
+
   if (!currentUser) return null;
 
   const today = new Date();
@@ -40,6 +55,26 @@ function ClockWidget() {
     e.employeeName === currentUser.name &&
     e.date.toDateString() === today.toDateString()
   );
+
+  // Auto-end breaks after 60 minutes
+  useEffect(() => {
+    if (!todayEntry) return;
+
+    const activeBreak = todayEntry.breaks.find(b => !b.end);
+    if (activeBreak && activeBreak.end) {
+      const timeUntilEnd = activeBreak.end.getTime() - Date.now();
+      if (timeUntilEnd > 0) {
+        const timeout = setTimeout(() => {
+          dispatch({ type: 'END_BREAK' });
+        }, timeUntilEnd);
+
+        return () => clearTimeout(timeout);
+      } else {
+        // Break already should have ended
+        dispatch({ type: 'END_BREAK' });
+      }
+    }
+  }, [todayEntry, dispatch]);
 
   const isClockedIn = todayEntry?.isClockedIn || false;
   const currentWorkType = todayEntry?.workType;
@@ -165,7 +200,7 @@ function ClockWidget() {
             className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Refresh data from Discord commands"
           >
-            <RefreshIcon className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
           </button>
 
           {/* Enhanced Status Badge */}

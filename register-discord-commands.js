@@ -85,6 +85,14 @@ const commands = [
     name: 'clock-out',
     description: 'Odjavi se sa posla',
   },
+  {
+    name: 'start-off',
+    description: 'Započni off-duty period (timer pauziran)',
+  },
+  {
+    name: 'end-off',
+    description: 'Završi off-duty period (nastavi timer)',
+  },
 ];
 
 const rest = new REST({ version: '9' }).setToken(DISCORD_BOT_TOKEN);
