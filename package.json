@@ -16,12 +16,14 @@
     "db:seed": "node drizzle/seed.js"
   },
   "dependencies": {
+    "@discordjs/rest": "^2.6.0",
     "@emailjs/browser": "^3.11.0",
     "@neondatabase/serverless": "^1.0.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "date-fns": "^2.30.0",
+    "discord-api-types": "^0.38.33",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "express": "^5.1.0",
