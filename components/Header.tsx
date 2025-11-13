@@ -133,13 +133,13 @@ function Header() {
   );
 
   return (
-    <header className="relative">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <header className="relative mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/50 dark:border-slate-700/50">
         <div className="min-w-0 flex-1">
-           <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Vacation Tracker</h1>
-           <p className="mt-1 sm:mt-2 text-sm sm:text-lg text-slate-600 dark:text-slate-400">Plan your time off with ease.</p>
+           <h1 className="text-3xl sm:text-5xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent tracking-tight">Vacation Tracker</h1>
+           <p className="mt-2 text-base sm:text-lg text-slate-600 dark:text-slate-400 font-medium">Plan your time off with ease.</p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
             <span className="text-sm text-slate-600 dark:text-slate-400">
               Logged in as: {currentUser.firstName && currentUser.lastName ? `${currentUser.firstName} ${currentUser.lastName}` : currentUser.name}
             </span>

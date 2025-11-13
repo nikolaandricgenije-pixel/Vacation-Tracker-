@@ -285,40 +285,39 @@ function AppContent() {
       <NotificationActionHandler />
       <MonthlyOvertimeNotifier />
       <WelcomeOnboarding />
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="container mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 max-w-7xl">
           <Header />
 
           {!isAdmin && (
-            <div className="mt-8 space-y-8">
+            <div className="mt-6 lg:mt-8 space-y-6 lg:space-y-8">
               {/* Primary Actions - Clock Widget */}
-              <section aria-labelledby="time-tracking">
+              <section aria-labelledby="time-tracking" className="animate-fade-in-up">
                 <h2 id="time-tracking" className="sr-only">Time Tracking</h2>
                 <ClockWidget />
               </section>
 
               {/* Quick Actions */}
-              <section aria-labelledby="quick-actions">
+              <section aria-labelledby="quick-actions" className="animate-fade-in-up" style={{animationDelay: '0.1s'}}>
                 <h2 id="quick-actions" className="sr-only">Quick Actions</h2>
                 <QuickActions />
               </section>
             </div>
           )}
 
-          <main className="mt-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
+          <main className="mt-6 lg:mt-8 grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
             {/* Main Content Area */}
             <div className="xl:col-span-8 space-y-8">
               {/* Calendar Overview */}
-              <section aria-labelledby="calendar-overview">
-                <h2 id="calendar-overview" className="sr-only">Calendar Overview</h2>
-                <Card className="shadow-lg">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 flex items-center">
-                        <span className="mr-2">📅</span>
+              <section aria-labelledby="calendar-overview" className="animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+                <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                  <div className="p-6 lg:p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center">
+                        <span className="mr-3 text-2xl">📅</span>
                         Calendar Overview
                       </h3>
-                      <span className="text-sm text-slate-500 dark:text-slate-400">Plan your time</span>
+                      <span className="text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">Plan your time</span>
                     </div>
                     <CalendarView />
                   </div>
@@ -328,15 +327,15 @@ function AppContent() {
               {!isAdmin && (
                 <>
                   {/* Time Off Requests */}
-                  <section aria-labelledby="time-off-requests">
-                    <Card className="shadow-lg">
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 flex items-center">
-                            <span className="mr-2">🏖️</span>
+                  <section aria-labelledby="time-off-requests" className="animate-fade-in-up" style={{animationDelay: '0.3s'}}>
+                    <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                      <div className="p-6 lg:p-8">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center">
+                            <span className="mr-3 text-2xl">🏖️</span>
                             Request Time Off
                           </h3>
-                          <span className="text-sm text-slate-500 dark:text-slate-400">Plan your vacation</span>
+                          <span className="text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">Plan your vacation</span>
                         </div>
                         <VacationRequestForm />
                       </div>
@@ -344,15 +343,15 @@ function AppContent() {
                   </section>
 
                   {/* Time Tracking Stats */}
-                  <section aria-labelledby="time-tracking-stats">
-                    <Card className="shadow-lg">
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 flex items-center">
-                            <span className="mr-2">📊</span>
+                  <section aria-labelledby="time-tracking-stats" className="animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+                    <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                      <div className="p-6 lg:p-8">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center">
+                            <span className="mr-3 text-2xl">📊</span>
                             Time Tracking Summary
                           </h3>
-                          <span className="text-sm text-slate-500 dark:text-slate-400">Your hours overview</span>
+                          <span className="text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">Your hours overview</span>
                         </div>
                         <TimeTracker />
                       </div>
@@ -401,15 +400,15 @@ function AppContent() {
             {/* Sidebar */}
             <aside className="xl:col-span-4 space-y-8">
               {/* Vacation List */}
-              <section aria-labelledby="vacation-list">
-                <Card className="shadow-lg sticky top-8">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 flex items-center">
-                        <span className="mr-2">📋</span>
+              <section aria-labelledby="vacation-list" className="animate-fade-in-up" style={{animationDelay: '0.5s'}}>
+                <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300 sticky top-8">
+                  <div className="p-6 lg:p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 flex items-center">
+                        <span className="mr-3 text-2xl">📋</span>
                         {isAdmin ? 'All Requests' : 'My Requests'}
                       </h3>
-                      <span className="text-sm text-slate-500 dark:text-slate-400">Track status</span>
+                      <span className="text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">Track status</span>
                     </div>
                     <VacationList />
                   </div>

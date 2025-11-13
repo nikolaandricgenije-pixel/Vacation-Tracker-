@@ -73,60 +73,60 @@ function QuickActions() {
   if (!currentUser) return null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      <Card className="p-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <Card className="p-5 hover:shadow-blue-500/10">
+        <div className="flex items-center space-x-4">
+          <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-500/20 dark:to-blue-600/20 rounded-xl shadow-sm">
             <CalendarIcon />
           </div>
-          <div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Remaining Vacation</p>
-            <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{remainingVacation} days</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Remaining Vacation</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{remainingVacation} <span className="text-lg font-normal text-slate-500">days</span></p>
           </div>
         </div>
       </Card>
 
-      <Card className="p-4">
+      <Card className="p-5 hover:shadow-green-500/10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 dark:bg-green-500/20 rounded-lg">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-500/20 dark:to-green-600/20 rounded-xl shadow-sm">
               <ClockIcon />
             </div>
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Today's Hours</p>
-              <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{todayHours.toFixed(1)}h</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Today's Hours</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{todayHours.toFixed(1)} <span className="text-lg font-normal text-slate-500">hrs</span></p>
             </div>
           </div>
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+            className="p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200 disabled:opacity-50 hover:scale-110"
             title="Refresh today's hours"
           >
-            <span className={`text-sm ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
+            <span className={`text-sm transition-transform ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
           </button>
         </div>
       </Card>
 
-      <Card className="p-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
+      <Card className="p-5 hover:shadow-amber-500/10">
+        <div className="flex items-center space-x-4">
+          <div className="p-3 bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-500/20 dark:to-amber-600/20 rounded-xl shadow-sm">
             <PencilIcon />
           </div>
-          <div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Pending Requests</p>
-            <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{pendingRequests.length}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Pending Requests</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{pendingRequests.length} <span className="text-lg font-normal text-slate-500">items</span></p>
           </div>
         </div>
       </Card>
 
-      <Card className="p-4">
-        <div className="flex flex-col space-y-2">
-          <Button onClick={handleQuickRequest} className="w-full">
-            Request Time Off
+      <Card className="p-5 hover:shadow-purple-500/10">
+        <div className="flex flex-col space-y-3">
+          <Button onClick={handleQuickRequest} className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/25">
+            📝 Request Time Off
           </Button>
-          <Button onClick={handleClockIn} className="w-full bg-green-600 hover:bg-green-700">
-            Clock In
+          <Button onClick={handleClockIn} className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-green-500/25">
+            🟢 Clock In
           </Button>
         </div>
       </Card>
