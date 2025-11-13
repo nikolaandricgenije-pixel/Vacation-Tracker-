@@ -26,7 +26,7 @@ const registerWebPush = async (): Promise<boolean> => {
 
     const registration = await navigator.serviceWorker.ready;
     
-    const response = await fetch(`${API_URL}/api/push/vapid-public-key`);
+    const response = await fetch(`${API_URL}/api/push`);
     const { publicKey } = await response.json();
 
     const subscription = await registration.pushManager.subscribe({
@@ -46,10 +46,10 @@ const registerWebPush = async (): Promise<boolean> => {
 const saveWebPushSubscription = async (subscription: PushSubscription): Promise<void> => {
   try {
     const userId = localStorage.getItem('user_email') || 'anonymous';
-    await fetch(`${API_URL}/api/push/subscribe`, {
+    await fetch(`${API_URL}/api/push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...subscription.toJSON(), userId, platform: 'web' })
+      body: JSON.stringify({ action: 'subscribe', ...subscription.toJSON(), userId, platform: 'web' })
     });
   } catch (error) {
     console.error('Error saving subscription to backend:', error);
@@ -60,10 +60,11 @@ export const sendPushNotification = async (data: NotificationData): Promise<bool
   try {
     const userId = data.userId || localStorage.getItem('user_email') || 'anonymous';
     
-    const response = await fetch(`${API_URL}/api/push/send`, {
+    const response = await fetch(`${API_URL}/api/push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'send',
         userId,
         type: data.type,
         title: data.title,
