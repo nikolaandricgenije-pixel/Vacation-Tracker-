@@ -74,29 +74,44 @@ export default async function handler(req, res) {
 
     console.log('[DEBUG] Looking up user with Discord ID:', userData.id);
     let user = await db.select().from(users).where(eq(users.discordId, userData.id)).limit(1);
-    console.log('[DEBUG] User lookup result:', user.length > 0 ? 'Found existing user' : 'No user found');
+    console.log('[DEBUG] User lookup by Discord ID result:', user.length > 0 ? 'Found existing user' : 'No user found');
 
     if (user.length === 0) {
-      const newUser = {
-        name: userData.username,
-        email: userData.email || `${userData.username}@discord.user`,
-        discordId: userData.id,
-        roles: ['Employee'],
-        vacationDays: 20,
-        paidLeaveDays: 7,
-      };
-
-      console.log('[DEBUG] Creating new user:', newUser);
-
-      if (newUser.email === 'nikola@valens.dev') {
-        newUser.roles = ['Admin', 'Employee'];
-        newUser.vacationDays = 25;
-        console.log('[DEBUG] Upgrading to admin role');
+      // Check if user with same email already exists (from seeding)
+      if (userData.email) {
+        console.log('[DEBUG] Checking for existing user with email:', userData.email);
+        const existingUser = await db.select().from(users).where(eq(users.email, userData.email)).limit(1);
+        if (existingUser.length > 0) {
+          console.log('[DEBUG] Found existing user by email, updating with Discord ID');
+          await db.update(users).set({ discordId: userData.id }).where(eq(users.email, userData.email));
+          user = existingUser;
+          console.log('[DEBUG] User updated with Discord ID:', user);
+        }
       }
 
-      const inserted = await db.insert(users).values(newUser).returning();
-      user = inserted;
-      console.log('[DEBUG] New user created:', user);
+      if (user.length === 0) {
+        // Create new user if no existing user found
+        const newUser = {
+          name: userData.username,
+          email: userData.email || `${userData.username}@discord.user`,
+          discordId: userData.id,
+          roles: ['Employee'],
+          vacationDays: 20,
+          paidLeaveDays: 7,
+        };
+
+        console.log('[DEBUG] Creating new user:', newUser);
+
+        if (newUser.email === 'nikola@valens.dev') {
+          newUser.roles = ['Admin', 'Employee'];
+          newUser.vacationDays = 25;
+          console.log('[DEBUG] Upgrading to admin role');
+        }
+
+        const inserted = await db.insert(users).values(newUser).returning();
+        user = inserted;
+        console.log('[DEBUG] New user created:', user);
+      }
     } else {
       user = user[0];
       console.log('[DEBUG] Using existing user:', user);
