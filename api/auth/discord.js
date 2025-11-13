@@ -1,12 +1,88 @@
-export default function handler(req, res) {
-  if (req.method === 'GET') {
-    // Redirect to Discord OAuth
-    const clientId = process.env.DISCORD_CLIENT_ID || 'your-discord-client-id';
-    const redirectUri = `${req.headers.host}/api/auth/discord/callback`;
-    const scope = 'identify email';
-    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`;
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const REDIRECT_URI = process.env.DISCORD_CALLBACK_URL;
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-    res.redirect(authUrl);
+const users = new Map();
+
+export default async function handler(req, res) {
+  if (req.method === 'GET') {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const path = url.pathname;
+
+    if (path === '/api/auth/discord') {
+      // Redirect to Discord OAuth
+      const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20email`;
+      res.redirect(discordAuthUrl);
+    } else if (path === '/api/auth/discord/callback') {
+      // Handle callback
+      const code = url.searchParams.get('code');
+      if (!code) {
+        return res.status(400).json({ error: 'No code provided' });
+      }
+
+      try {
+        // Exchange code for access token
+        const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            grant_type: 'authorization_code',
+            code: code,
+            redirect_uri: REDIRECT_URI,
+          }),
+        });
+
+        const tokenData = await tokenResponse.json();
+        if (!tokenData.access_token) {
+          return res.status(400).json({ error: 'Failed to get access token' });
+        }
+
+        // Get user info
+        const userResponse = await fetch('https://discord.com/api/users/@me', {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+          },
+        });
+
+        const profile = await userResponse.json();
+
+        // Create or find user
+        let user = Array.from(users.values()).find(u => u.discordId === profile.id);
+
+        if (!user) {
+          user = {
+            id: Date.now().toString(),
+            discordId: profile.id,
+            email: profile.email,
+            name: profile.username,
+            picture: profile.avatar ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png` : null,
+            roles: ['Employee'],
+            vacationDays: 20,
+            paidLeaveDays: 7
+          };
+
+          if (user.email === 'nikola@valens.dev') {
+            user.roles = ['Admin', 'Employee'];
+            user.vacationDays = 25;
+          }
+
+          users.set(user.id, user);
+        }
+
+        // Redirect back to client
+        res.redirect(`${CLIENT_URL}?discord_login=success&user_name=${encodeURIComponent(user.name)}&user_email=${encodeURIComponent(user.email)}`);
+      } catch (error) {
+        console.error('Discord OAuth error:', error);
+        res.status(500).json({ error: 'OAuth failed' });
+      }
+    } else {
+      res.status(404).json({ error: 'Not found' });
+    }
   } else {
     res.setHeader('Allow', ['GET']);
     res.status(405).end(`Method ${req.method} Not Allowed`);

@@ -1,4 +1,5 @@
 const passport = require('passport');
+const DiscordStrategy = require('passport-discord').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const users = new Map();
@@ -49,6 +50,46 @@ passport.use(
       }
     }
   )
+);
+
+passport.use(
+ new DiscordStrategy(
+   {
+     clientID: process.env.DISCORD_CLIENT_ID || 'demo-client-id',
+     clientSecret: process.env.DISCORD_CLIENT_SECRET || 'demo-client-secret',
+     callbackURL: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3001/api/auth/discord/callback',
+     scope: ['identify', 'email']
+   },
+   async (accessToken, refreshToken, profile, done) => {
+     try {
+       let user = Array.from(users.values()).find(u => u.discordId === profile.id);
+
+       if (!user) {
+         user = {
+           id: Date.now().toString(),
+           discordId: profile.id,
+           email: profile.email,
+           name: profile.username,
+           picture: profile.avatar ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png` : null,
+           roles: ['Employee'],
+           vacationDays: 20,
+           paidLeaveDays: 7
+         };
+
+         if (user.email === 'nikola@valens.dev') {
+           user.roles = ['Admin', 'Employee'];
+           user.vacationDays = 25;
+         }
+
+         users.set(user.id, user);
+       }
+
+       return done(null, user);
+     } catch (error) {
+       return done(error, null);
+     }
+   }
+ )
 );
 
 module.exports = passport;

@@ -4,9 +4,30 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
+router.get('/discord',
+  passport.authenticate('discord')
+);
+
+router.get('/discord/callback',
+  passport.authenticate('discord', { failureRedirect: '/login' }),
+  (req, res) => {
+    const token = jwt.sign(
+      {
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name
+      },
+      process.env.JWT_SECRET || 'jwt-secret-change-in-production',
+      { expiresIn: '7d' }
+    );
+
+    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}?discord_login=success&user_name=${encodeURIComponent(req.user.name)}&user_email=${encodeURIComponent(req.user.email)}`);
+  }
+);
+
 router.get('/google',
-  passport.authenticate('google', { 
-    scope: ['profile', 'email'] 
+  passport.authenticate('google', {
+    scope: ['profile', 'email']
   })
 );
 
@@ -14,10 +35,10 @@ router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
     const token = jwt.sign(
-      { 
-        id: req.user.id, 
+      {
+        id: req.user.id,
         email: req.user.email,
-        name: req.user.name 
+        name: req.user.name
       },
       process.env.JWT_SECRET || 'jwt-secret-change-in-production',
       { expiresIn: '7d' }
