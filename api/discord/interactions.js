@@ -508,51 +508,105 @@ export default async function handler(req, res) {
             });
 
           case 'who-is-online':
-            // Get all users who are currently clocked in
-            const allTimeEntries = await db.select().from(timeEntries);
-            const onlineUsers = [];
+            try {
+              // Get today's date
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
 
-            for (const entry of allTimeEntries) {
-              const entryDate = new Date(entry.date);
-              const today6 = new Date();
-              today6.setHours(0, 0, 0, 0);
+              // Get all time entries for today
+              const todayEntries = await db.select().from(timeEntries);
 
-              if (entryDate.getTime() === today6.getTime() && entry.isClockedIn) {
-                const userInfo = await db.select().from(users).where(eq(users.name, entry.employeeName)).limit(1);
-                if (userInfo.length > 0) {
-                  onlineUsers.push({
-                    name: entry.employeeName,
-                    workType: entry.workType,
-                    clockedInAt: entry.lastClockIn ? new Date(entry.lastClockIn).toLocaleTimeString() : 'Unknown'
-                  });
+              // Get all users to map names
+              const allUsers = await db.select().from(users);
+
+              // Create user map for quick lookup
+              const userMap = {};
+              allUsers.forEach(user => {
+                userMap[user.id] = user.name;
+              });
+
+              // Categorize users
+              const workingUsers = [];
+              const breakUsers = [];
+              const offUsers = [];
+
+              todayEntries.forEach(entry => {
+                const entryDate = new Date(entry.date);
+                if (entryDate.getTime() !== today.getTime()) return;
+
+                const userName = userMap[entry.employeeName] || entry.employeeName;
+
+                if (entry.isClockedIn) {
+                  if (entry.breaks.some(b => !b.end)) {
+                    // On break
+                    breakUsers.push({
+                      name: userName,
+                      workType: entry.workType,
+                      breakStart: entry.breaks.find(b => !b.end)?.start
+                    });
+                  } else if (entry.offs.some(o => !o.end)) {
+                    // Off duty
+                    offUsers.push({
+                      name: userName,
+                      workType: entry.workType,
+                      offStart: entry.offs.find(o => !o.end)?.start
+                    });
+                  } else {
+                    // Actively working
+                    workingUsers.push({
+                      name: userName,
+                      workType: entry.workType,
+                      clockedInAt: entry.lastClockIn ? new Date(entry.lastClockIn).toLocaleTimeString() : 'Unknown'
+                    });
+                  }
                 }
-              }
-            }
+              });
 
-            if (onlineUsers.length === 0) {
+              // Build response
+              let content = '**👥 Team Status Today**\n\n';
+
+              if (workingUsers.length > 0) {
+                content += `**🟢 Currently Working:**\n${workingUsers.map(u => `• ${u.name} (${u.workType}) - Since ${u.clockedInAt}`).join('\n')}\n\n`;
+              } else {
+                content += '**🟢 Currently Working:**\n• No one currently working\n\n';
+              }
+
+              if (breakUsers.length > 0) {
+                content += `**☕ On Break:**\n${breakUsers.map(u => `• ${u.name} (${u.workType}) - Break started ${u.breakStart ? new Date(u.breakStart).toLocaleTimeString() : 'Unknown'}`).join('\n')}\n\n`;
+              }
+
+              if (offUsers.length > 0) {
+                content += `**⏸️ Off Duty:**\n${offUsers.map(u => `• ${u.name} (${u.workType}) - Off since ${u.offStart ? new Date(u.offStart).toLocaleTimeString() : 'Unknown'}`).join('\n')}\n\n`;
+              }
+
+              content += `*Total active today: ${workingUsers.length + breakUsers.length + offUsers.length} team members*`;
+
               return res.status(200).json({
                 type: 4,
                 data: {
-                  content: '👥 No one is currently clocked in.',
+                  embeds: [{
+                    title: '👥 Team Online Status',
+                    description: content,
+                    color: 0x00ff00,
+                    timestamp: new Date().toISOString(),
+                    footer: {
+                      text: 'Vacation Tracker'
+                    }
+                  }],
+                  flags: 64
+                }
+              });
+
+            } catch (error) {
+              console.error('Error fetching online users:', error);
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '❌ Error fetching team status. Please try again later.',
                   flags: 64
                 }
               });
             }
-
-            const onlineList = onlineUsers.map(u => `• ${u.name} (${u.workType}) - Since ${u.clockedInAt}`).join('\n');
-
-            return res.status(200).json({
-              type: 4,
-              data: {
-                embeds: [{
-                  title: '👥 Currently Online',
-                  description: onlineList,
-                  color: 0x00ff00,
-                  timestamp: new Date().toISOString(),
-                }],
-                flags: 64
-              }
-            });
 
           default:
             return res.status(200).json({

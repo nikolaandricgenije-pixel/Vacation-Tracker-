@@ -43,6 +43,10 @@ const commands = [
     description: 'Odjavi se sa posla',
   },
   {
+    name: 'who-is-online',
+    description: 'Prikaži ko je trenutno na poslu',
+  },
+  {
     name: 'start-off',
     description: 'Započni off-duty period (timer pauziran)',
   },
@@ -65,10 +69,6 @@ const commands = [
   {
     name: 'break',
     description: 'Započni 60-minutnu pauzu (automatski se završava)',
-  },
-  {
-    name: 'who-is-online',
-    description: 'Prikaži ko je trenutno na poslu',
   },
 ];
 
