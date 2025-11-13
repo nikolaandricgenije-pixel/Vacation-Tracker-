@@ -21,10 +21,11 @@ export enum VacationStatus {
 }
 
 export interface User {
-   name: string;
-   roles: ('Admin' | 'Employee' | 'Project Manager' | 'CEO')[];
-   vacationDays: number;
-   paidLeaveDays: number;
+    name: string;
+    email: string;
+    roles: ('Admin' | 'Employee' | 'Project Manager' | 'CEO')[];
+    vacationDays: number;
+    paidLeaveDays: number;
 }
 
 export interface VacationRequest {

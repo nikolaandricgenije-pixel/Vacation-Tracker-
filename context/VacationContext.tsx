@@ -46,11 +46,11 @@ type Action =
     | { type: 'SET_PUSH_SUBSCRIPTION'; payload: PushSubscription | null };
   
 const users: User[] = [
-    { name: 'Nikola Andrić', roles: ['Admin', 'Employee'], vacationDays: 25, paidLeaveDays: 7 },
-    { name: 'Alice Smith', roles: ['Project Manager', 'Employee'], vacationDays: 22, paidLeaveDays: 7 },
-    { name: 'Bob Johnson', roles: ['Employee'], vacationDays: 20, paidLeaveDays: 7 },
-    { name: 'Charlie Brown', roles: ['Employee'], vacationDays: 15, paidLeaveDays: 7 },
-    { name: 'Eva Martinez', roles: ['CEO', 'Admin'], vacationDays: 30, paidLeaveDays: 10 },
+    { name: 'Nikola Andrić', email: 'nikola@valens.dev', roles: ['Admin', 'Employee'], vacationDays: 25, paidLeaveDays: 7 },
+    { name: 'Alice Smith', email: 'alice@company.com', roles: ['Project Manager', 'Employee'], vacationDays: 22, paidLeaveDays: 7 },
+    { name: 'Bob Johnson', email: 'bob@company.com', roles: ['Employee'], vacationDays: 20, paidLeaveDays: 7 },
+    { name: 'Charlie Brown', email: 'charlie@company.com', roles: ['Employee'], vacationDays: 15, paidLeaveDays: 7 },
+    { name: 'Eva Martinez', email: 'eva@company.com', roles: ['CEO', 'Admin'], vacationDays: 30, paidLeaveDays: 10 },
 ];
 
 const today = new Date();

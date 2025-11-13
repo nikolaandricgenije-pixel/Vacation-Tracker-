@@ -9,6 +9,7 @@ function UserManagement() {
   const dispatch = useVacationDispatch();
 
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEmployee, setIsEmployee] = useState(true);
   const [isProjectManager, setIsProjectManager] = useState(false);
@@ -26,8 +27,18 @@ function UserManagement() {
       return;
     }
 
+    if (!email.trim()) {
+      setError('Email is required.');
+      return;
+    }
+
     if (users.some(u => u.name.toLowerCase() === name.trim().toLowerCase())) {
       setError('User with this name already exists.');
+      return;
+    }
+
+    if (users.some(u => u.email.toLowerCase() === email.trim().toLowerCase())) {
+      setError('User with this email already exists.');
       return;
     }
 
@@ -44,6 +55,7 @@ function UserManagement() {
 
     const newUser: User = {
       name: name.trim(),
+      email: email.trim(),
       roles,
       vacationDays,
       paidLeaveDays,
@@ -53,6 +65,7 @@ function UserManagement() {
 
     // Reset form
     setName('');
+    setEmail('');
     setIsAdmin(false);
     setIsEmployee(true);
     setIsProjectManager(false);
@@ -99,6 +112,17 @@ function UserManagement() {
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
                 placeholder="Enter user name"
+              />
+            </div>
+            <div>
+              <label htmlFor="user-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+              <input
+                type="email"
+                id="user-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                placeholder="Enter user email"
               />
             </div>
 
