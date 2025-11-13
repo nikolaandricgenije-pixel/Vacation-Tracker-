@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useVacationState, useVacationDispatch } from '../context/VacationContext';
-import { VacationStatus, LeaveType } from '../types';
+import { VacationStatus, LeaveType, WorkType } from '../types';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import ClockIcon from './icons/ClockIcon';
@@ -25,7 +25,7 @@ function QuickActions() {
   };
 
   const handleClockIn = () => {
-    dispatch({ type: 'CLOCK_IN', payload: { workType: 'Work from office' } });
+    dispatch({ type: 'CLOCK_IN', payload: { workType: WorkType.Office } });
   };
 
   if (!currentUser) return null;
@@ -35,7 +35,7 @@ function QuickActions() {
       <Card className="p-4">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
-            <CalendarIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <CalendarIcon />
           </div>
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400">Remaining Vacation</p>
@@ -47,7 +47,7 @@ function QuickActions() {
       <Card className="p-4">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-green-100 dark:bg-green-500/20 rounded-lg">
-            <ClockIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <ClockIcon />
           </div>
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400">Today's Hours</p>
@@ -59,7 +59,7 @@ function QuickActions() {
       <Card className="p-4">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
-            <PencilIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+            <PencilIcon />
           </div>
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-400">Pending Requests</p>

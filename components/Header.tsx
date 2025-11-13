@@ -134,12 +134,12 @@ function Header() {
 
   return (
     <header className="relative">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-           <h1 className="text-4xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Vacation Tracker</h1>
-           <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">Plan your time off with ease.</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+           <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Vacation Tracker</h1>
+           <p className="mt-1 sm:mt-2 text-sm sm:text-lg text-slate-600 dark:text-slate-400">Plan your time off with ease.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
             <span className="text-sm text-slate-600 dark:text-slate-400">
               Logged in as: {currentUser.firstName && currentUser.lastName ? `${currentUser.firstName} ${currentUser.lastName}` : currentUser.name}
             </span>

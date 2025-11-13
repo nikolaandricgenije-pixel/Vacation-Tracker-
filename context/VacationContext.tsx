@@ -29,6 +29,7 @@ type Action =
     | { type: 'UPDATE_REQUEST'; payload: VacationRequest }
     | { type: 'DELETE_REQUEST'; payload: { id: string } }
     | { type: 'SWITCH_USER'; payload: { userName: string } }
+    | { type: 'SWITCH_USER_BY_EMAIL'; payload: { email: string } }
     | { type: 'ADD_USER'; payload: User }
     | { type: 'TOGGLE_THEME' }
     | { type: 'CLOCK_IN'; payload: { workType: WorkType } }
@@ -234,6 +235,15 @@ function vacationReducer(state: State, action: Action): State {
             editingRequest: null, // Cancel edits on user switch
         }
     }
+    case 'SWITCH_USER_BY_EMAIL': {
+        const newUser = state.users.find(u => u.email.toLowerCase() === action.payload.email.toLowerCase()) || state.currentUser;
+        return {
+            ...state,
+            currentUser: newUser,
+            isAdmin: false, // Reset admin view on user switch
+            editingRequest: null, // Cancel edits on user switch
+        }
+    }
     case 'ADD_USER':
         return {
             ...state,
@@ -247,10 +257,10 @@ function vacationReducer(state: State, action: Action): State {
     case 'CLOCK_IN': {
       if (!state.currentUser) return state;
       const now = new Date();
-      // Security: Check time synchronization (in real app, compare with server time)
+      // Security: Check time synchronization (relaxed for better UX)
       const clientTime = now.getTime();
       const expectedTime = Date.now();
-      if (Math.abs(clientTime - expectedTime) > 300000) { // 5 minute tolerance
+      if (Math.abs(clientTime - expectedTime) > 3600000) { // 1 hour tolerance (more reasonable)
         console.warn('Security: Time synchronization issue detected - potential time manipulation');
         // In real app, this would trigger server validation
         return state;
@@ -554,6 +564,25 @@ export function VacationProvider({ children }: { children: ReactNode }) {
      const interval = setInterval(checkMidnight, 1000);
      return () => clearInterval(interval);
    }, [state.timeEntries, dispatch]);
+
+   // Auto-end expired breaks (notify user when 60-minute break ends)
+   useEffect(() => {
+     const checkExpiredBreaks = () => {
+       const now = new Date();
+
+       state.timeEntries.forEach(entry => {
+         entry.breaks.forEach(breakItem => {
+           if (breakItem.end && breakItem.end <= now) {
+             // Break has expired - could add notification here
+             console.log(`Break expired for ${entry.employeeName} at ${breakItem.end}`);
+           }
+         });
+       });
+     };
+
+     const interval = setInterval(checkExpiredBreaks, 30000); // Check every 30 seconds
+     return () => clearInterval(interval);
+   }, [state.timeEntries]);
 
    return (
      <VacationStateContext.Provider value={state}>

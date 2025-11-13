@@ -28,18 +28,28 @@ function Login() {
                 console.log('[DEBUG] Dispatching login for user:', user.name);
                 dispatch({ type: 'LOGIN', payload: { userName: user.name } });
 
-                if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
-                    navigator.serviceWorker.ready.then(registration => {
-                        registration.showNotification('Welcome to Vacation Tracker!', {
-                            body: `Hello ${user.name}! Logged in via Discord`,
-                            icon: '/icon-192.png',
-                            badge: '/icon-192.png',
-                            tag: 'discord-login'
+                // Cross-browser compatible notification
+                try {
+                    if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+                        navigator.serviceWorker.ready.then(registration => {
+                            registration.showNotification('Welcome to Vacation Tracker!', {
+                                body: `Hello ${user.name}! Logged in via Discord`,
+                                icon: '/icon-192.png',
+                                badge: '/icon-192.png',
+                                tag: 'discord-login'
+                            });
+                        }).catch(err => {
+                            console.log('Service worker notification failed:', err);
                         });
-                    });
+                    }
+                } catch (notificationError) {
+                    console.log('Notification not supported or failed:', notificationError);
                 }
 
-                window.history.replaceState({}, document.title, window.location.pathname);
+                // Clean URL without breaking in older browsers
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
 
                 dispatch({
                     type: 'ADD_NOTIFICATION',
@@ -78,15 +88,22 @@ function Login() {
 
         dispatch({ type: 'LOGIN', payload: { userName: user.name } });
 
-        if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification('Welcome to Vacation Tracker!', {
-                    body: `Hello ${user.name}! Ready to track your time?`,
-                    icon: '/icon-192.png',
-                    badge: '/icon-192.png',
-                    tag: 'welcome'
+        // Cross-browser compatible notification
+        try {
+            if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification('Welcome to Vacation Tracker!', {
+                        body: `Hello ${user.name}! Ready to track your time?`,
+                        icon: '/icon-192.png',
+                        badge: '/icon-192.png',
+                        tag: 'welcome'
+                    });
+                }).catch(err => {
+                    console.log('Service worker notification failed:', err);
                 });
-            });
+            }
+        } catch (notificationError) {
+            console.log('Notification not supported or failed:', notificationError);
         }
 
         dispatch({
@@ -106,9 +123,9 @@ function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-4">
-            <Card className="w-full max-w-md">
-                <div className="p-8">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-4 sm:p-6">
+            <Card className="w-full max-w-md mx-auto">
+                <div className="p-6 sm:p-8">
                     <div className="text-center mb-8">
                         <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">
                             Vacation Tracker
