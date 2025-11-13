@@ -1,17 +1,59 @@
 import { db } from './drizzle/db.js';
 import { users, vacationRequests, timeEntries } from './drizzle/schema.js';
 import { eq, and, gte } from 'drizzle-orm';
+import crypto from 'crypto';
+
+// Verify Discord Ed25519 signature
+function verifySignature(publicKey, signature, message) {
+  try {
+    // Discord uses raw Ed25519 public keys (32 bytes)
+    const key = crypto.createPublicKey({
+      key: Buffer.from(publicKey, 'hex'),
+      format: 'raw',
+      type: 'ed25519'
+    });
+
+    const verifier = crypto.createVerify('SHA256');
+    verifier.update(message);
+
+    return verifier.verify(key, Buffer.from(signature, 'hex'));
+  } catch (error) {
+    console.error('[DISCORD] Signature verification error:', error);
+    return false;
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const { type, data, member, user } = req.body;
 
-      // Verify Discord request (in production, verify signature)
+      // Verify Discord request signature
       const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY;
       if (!PUBLIC_KEY) {
+        console.error('[DISCORD] Missing DISCORD_PUBLIC_KEY');
         return res.status(401).json({ error: 'Discord public key not configured' });
       }
+
+      // Verify request signature
+      const signature = req.headers['x-signature-ed25519'];
+      const timestamp = req.headers['x-signature-timestamp'];
+
+      if (!signature || !timestamp) {
+        console.error('[DISCORD] Missing signature headers');
+        return res.status(401).json({ error: 'Invalid request signature' });
+      }
+
+      // Verify signature
+      const message = timestamp + JSON.stringify(req.body);
+      const isValid = verifySignature(PUBLIC_KEY, signature, message);
+
+      if (!isValid) {
+        console.error('[DISCORD] Invalid signature');
+        return res.status(401).json({ error: 'Invalid request signature' });
+      }
+
+      console.log('[DISCORD] Request signature verified successfully');
 
       // Handle ping
       if (type === 1) {
