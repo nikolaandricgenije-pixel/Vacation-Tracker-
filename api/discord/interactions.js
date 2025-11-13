@@ -1,22 +1,33 @@
-import { db } from './drizzle/db.js';
-import { users, vacationRequests, timeEntries } from './drizzle/schema.js';
+import { db } from '../drizzle/db.js';
+import { users, vacationRequests, timeEntries } from '../drizzle/schema.js';
 import { eq, and, gte } from 'drizzle-orm';
-import crypto from 'crypto';
+import { webcrypto } from 'crypto';
 
-// Verify Discord Ed25519 signature
-function verifySignature(publicKey, signature, message) {
+async function verifySignature(publicKey, signature, message) {
   try {
-    // Discord uses raw Ed25519 public keys (32 bytes)
-    const key = crypto.createPublicKey({
-      key: Buffer.from(publicKey, 'hex'),
-      format: 'raw',
-      type: 'ed25519'
-    });
+    const publicKeyBytes = Buffer.from(publicKey, 'hex');
+    const signatureBytes = Buffer.from(signature, 'hex');
+    const messageBytes = Buffer.from(message, 'utf8');
 
-    const verifier = crypto.createVerify('SHA256');
-    verifier.update(message);
+    const key = await webcrypto.subtle.importKey(
+      'raw',
+      publicKeyBytes,
+      {
+        name: 'Ed25519',
+        namedCurve: 'Ed25519'
+      },
+      false,
+      ['verify']
+    );
 
-    return verifier.verify(key, Buffer.from(signature, 'hex'));
+    const isValid = await webcrypto.subtle.verify(
+      'Ed25519',
+      key,
+      signatureBytes,
+      messageBytes
+    );
+
+    return isValid;
   } catch (error) {
     console.error('[DISCORD] Signature verification error:', error);
     return false;
@@ -28,14 +39,12 @@ export default async function handler(req, res) {
     try {
       const { type, data, member, user } = req.body;
 
-      // Verify Discord request signature
       const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY;
       if (!PUBLIC_KEY) {
         console.error('[DISCORD] Missing DISCORD_PUBLIC_KEY');
         return res.status(401).json({ error: 'Discord public key not configured' });
       }
 
-      // Verify request signature
       const signature = req.headers['x-signature-ed25519'];
       const timestamp = req.headers['x-signature-timestamp'];
 
@@ -47,48 +56,41 @@ export default async function handler(req, res) {
       });
 
       if (!signature || !timestamp) {
-        console.error('[DISCORD] Missing signature headers - this should not happen in production');
-        // For debugging, allow requests without signature
-        console.log('[DISCORD] Allowing request without signature for debugging');
-      } else {
-        // Verify signature
-        const message = timestamp + JSON.stringify(req.body);
-        console.log('[DISCORD] Verifying signature for message length:', message.length);
-
-        const isValid = verifySignature(PUBLIC_KEY, signature, message);
-
-        if (!isValid) {
-          console.error('[DISCORD] Invalid signature - this is a security issue');
-          return res.status(401).json({ error: 'Invalid request signature' });
-        }
-
-        console.log('[DISCORD] Request signature verified successfully');
+        console.error('[DISCORD] Missing signature headers');
+        return res.status(401).json({ error: 'Missing signature headers' });
       }
 
-      // Handle ping
+      const message = timestamp + JSON.stringify(req.body);
+      console.log('[DISCORD] Verifying signature for message length:', message.length);
+
+      const isValid = await verifySignature(PUBLIC_KEY, signature, message);
+
+      if (!isValid) {
+        console.error('[DISCORD] Invalid signature - this is a security issue');
+        return res.status(401).json({ error: 'Invalid request signature' });
+      }
+
+      console.log('[DISCORD] Request signature verified successfully');
+
       if (type === 1) {
         return res.status(200).json({ type: 1 });
       }
 
-      // Handle slash commands
       if (type === 2 && data) {
         const { name, options } = data;
 
         switch (name) {
           case 'vacation-status':
-            // Get user's vacation status
             const discordUserId = user?.id;
             if (!discordUserId) {
               return res.status(200).json({
                 type: 4,
                 data: {
                   content: 'Could not identify Discord user.',
-                  flags: 64 // Ephemeral
+                  flags: 64
                 }
               });
             }
-
-            // Find user in database
 
             const dbUser = await db.select().from(users).where(eq(users.discordId, discordUserId)).limit(1);
 
@@ -104,7 +106,6 @@ export default async function handler(req, res) {
 
             const userData = dbUser[0];
 
-            // Get approved vacation days
             const approvedRequests = await db.select()
               .from(vacationRequests)
               .where(and(
@@ -129,12 +130,11 @@ export default async function handler(req, res) {
                   color: 0x00ff00,
                   timestamp: new Date().toISOString(),
                 }],
-                flags: 64 // Ephemeral
+                flags: 64
               }
             });
 
           case 'request-vacation':
-            // Handle vacation request command
             const startDate = options?.find(opt => opt.name === 'start_date')?.value;
             const endDate = options?.find(opt => opt.name === 'end_date')?.value;
             const days = options?.find(opt => opt.name === 'days')?.value;
@@ -150,7 +150,6 @@ export default async function handler(req, res) {
               });
             }
 
-            // Create vacation request
             const discordUserId2 = user?.id;
             const dbUser2 = await db.select().from(users).where(eq(users.discordId, discordUserId2)).limit(1);
 
@@ -183,7 +182,6 @@ export default async function handler(req, res) {
             });
 
           case 'check-hours':
-            // Check weekly hours
             const discordUserId3 = user?.id;
             const dbUser3 = await db.select().from(users).where(eq(users.discordId, discordUserId3)).limit(1);
 
@@ -197,10 +195,9 @@ export default async function handler(req, res) {
               });
             }
 
-            // Calculate this week's hours
             const now = new Date();
             const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
+            weekStart.setDate(now.getDate() - now.getDay() + 1);
             weekStart.setHours(0, 0, 0, 0);
 
             const weekEntries = await db.select()
@@ -233,7 +230,6 @@ export default async function handler(req, res) {
             });
 
           case 'clock-in':
-            // Clock in for today
             const workType = options?.find(opt => opt.name === 'work_type')?.value || 'Office';
             const discordUserId4 = user?.id;
             const dbUser4 = await db.select().from(users).where(eq(users.discordId, discordUserId4)).limit(1);
@@ -248,7 +244,6 @@ export default async function handler(req, res) {
               });
             }
 
-            // Check if already clocked in today
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const existingEntry = await db.select()
@@ -268,7 +263,6 @@ export default async function handler(req, res) {
               });
             }
 
-            // Clock in
             if (existingEntry.length > 0) {
               await db.update(timeEntries)
                 .set({ isClockedIn: true, lastClockIn: new Date(), workType })
@@ -295,7 +289,6 @@ export default async function handler(req, res) {
             });
 
           case 'clock-out':
-            // Clock out
             const discordUserId5 = user?.id;
             const dbUser5 = await db.select().from(users).where(eq(users.discordId, discordUserId5)).limit(1);
 
@@ -328,7 +321,6 @@ export default async function handler(req, res) {
               });
             }
 
-            // Calculate session time
             const clockOut = new Date();
             const sessionMinutes = Math.floor((clockOut.getTime() - entry[0].lastClockIn.getTime()) / (1000 * 60));
             const newTotal = entry[0].totalWorkingMinutes + sessionMinutes;
@@ -359,7 +351,7 @@ export default async function handler(req, res) {
       res.status(400).json({ error: 'Invalid interaction type' });
     } catch (error) {
       console.error('Discord interaction error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', details: error.message });
     }
   } else {
     res.setHeader('Allow', ['POST']);

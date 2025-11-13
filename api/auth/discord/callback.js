@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     });
 
     const tokenData = await tokenResponse.json();
-    console.log('[DEBUG] Token response status:', tokenResponse.status, 'data:', tokenData);
+    console.log('[DEBUG] Token response status:', tokenResponse.status);
 
     if (!tokenResponse.ok) {
       console.error('[DEBUG] Discord token exchange failed:', tokenData);
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     });
 
     const userData = await userResponse.json();
-    console.log('[DEBUG] Discord user data:', userData);
+    console.log('[DEBUG] Discord user data received for:', userData.username);
 
     if (!userResponse.ok) {
       console.error('[DEBUG] Discord user fetch failed:', userData);
@@ -85,32 +85,35 @@ export default async function handler(req, res) {
     console.log('[DEBUG] User lookup by Discord ID result:', user.length > 0 ? `Found user: ${user[0].name}` : 'No user found');
 
     if (user.length === 0) {
-      // Check if user with same email already exists (from seeding or manual creation)
       if (userData.email) {
         console.log('[DEBUG] Checking for existing user with email:', userData.email);
         const existingUser = await db.select().from(users).where(eq(users.email, userData.email)).limit(1);
+        
         if (existingUser.length > 0) {
           console.log('[DEBUG] Found existing user by email, linking with Discord ID');
-          await db.update(users).set({ discordId: userData.id }).where(eq(users.email, userData.email));
-          user = existingUser;
+          
+          const updatedUsers = await db.update(users)
+            .set({ discordId: userData.id })
+            .where(eq(users.email, userData.email))
+            .returning();
+          
+          user = updatedUsers;
           console.log('[DEBUG] User linked with Discord ID:', user[0].name);
         }
       }
 
       if (user.length === 0) {
-        // Create new user if no existing user found
         const newUser = {
           name: userData.username || userData.global_name || `DiscordUser${userData.id.slice(-4)}`,
           email: userData.email || `${userData.id}@discord.local`,
           discordId: userData.id,
           roles: ['Employee'],
-          vacationDays: 20,
-          paidLeaveDays: 7,
+          vacationDays: parseInt(process.env.DEFAULT_VACATION_DAYS || '20'),
+          paidLeaveDays: parseInt(process.env.DEFAULT_PAID_LEAVE_DAYS || '7'),
         };
 
-        console.log('[DEBUG] Creating new Discord user:', newUser);
+        console.log('[DEBUG] Creating new Discord user:', newUser.name, newUser.email);
 
-        // Special handling for admin user
         if (newUser.email === 'nikola@valens.dev' || userData.email === 'nikola@valens.dev') {
           newUser.roles = ['Admin', 'Employee'];
           newUser.vacationDays = 25;
@@ -123,27 +126,34 @@ export default async function handler(req, res) {
           console.log('[DEBUG] New Discord user created successfully:', user[0].name);
         } catch (dbError) {
           console.error('[DEBUG] Database error creating user:', dbError);
-          return res.status(500).json({ error: 'Failed to create user account' });
+          
+          if (dbError.code === '23505') {
+            console.log('[DEBUG] Race condition detected - user was created by another request');
+            const existingUser = await db.select().from(users).where(eq(users.discordId, userData.id)).limit(1);
+            if (existingUser.length > 0) {
+              user = existingUser;
+            } else {
+              return res.status(500).json({ error: 'Failed to create user account - duplicate detected' });
+            }
+          } else {
+            return res.status(500).json({ error: 'Failed to create user account' });
+          }
         }
       }
-    } else {
-      user = user[0];
-      console.log('[DEBUG] Using existing linked user:', user.name);
     }
 
-    // Ensure we have a valid user object
-    if (!user || user.length === 0) {
+    const userRecord = Array.isArray(user) ? user[0] : user;
+    
+    if (!userRecord) {
       console.error('[DEBUG] No user object after all attempts');
       return res.status(500).json({ error: 'Failed to find or create user' });
     }
-
-    // Get the actual user object
-    const userRecord = Array.isArray(user) ? user[0] : user;
+    
     console.log('[DEBUG] Final user for login:', userRecord.name, userRecord.email);
 
     const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
     const frontendUrl = `${clientUrl}?discord_login=success&user_email=${encodeURIComponent(userRecord.email)}`;
-    console.log('[DEBUG] Redirecting to frontend with user:', userRecord.name, userRecord.email);
+    console.log('[DEBUG] Redirecting to frontend with user:', userRecord.name);
 
     res.redirect(frontendUrl);
 
