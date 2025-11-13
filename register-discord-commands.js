@@ -27,59 +27,16 @@ if (!DISCORD_CLIENT_ID || DISCORD_CLIENT_ID === 'your-discord-client-id-here') {
 
 const commands = [
   {
-    name: 'vacation-status',
-    description: 'Proveri svoj vacation status',
-  },
-  {
-    name: 'request-vacation',
-    description: 'Zatraži godišnji odmor',
-    options: [
-      {
-        name: 'start_date',
-        description: 'Datum početka (YYYY-MM-DD)',
-        type: ApplicationCommandOptionType.String,
-        required: true,
-      },
-      {
-        name: 'end_date',
-        description: 'Datum kraja (YYYY-MM-DD)',
-        type: ApplicationCommandOptionType.String,
-        required: true,
-      },
-      {
-        name: 'days',
-        description: 'Broj dana',
-        type: ApplicationCommandOptionType.Integer,
-        required: true,
-      },
-      {
-        name: 'reason',
-        description: 'Razlog za godišnji',
-        type: ApplicationCommandOptionType.String,
-        required: false,
-      },
-    ],
-  },
-  {
     name: 'check-hours',
     description: 'Proveri sedmične sate',
   },
   {
-    name: 'clock-in',
-    description: 'Prijavi se na posao',
-    options: [
-      {
-        name: 'work_type',
-        description: 'Tip rada',
-        type: ApplicationCommandOptionType.String,
-        required: false,
-        choices: [
-          { name: 'Kancelarija', value: 'Office' },
-          { name: 'Kuća', value: 'Home' },
-          { name: 'Poslovno putovanje', value: 'BusinessTrip' },
-        ],
-      },
-    ],
+    name: 'wfo',
+    description: 'Work from office - prijavi se na posao iz kancelarije',
+  },
+  {
+    name: 'wfh',
+    description: 'Work from home - prijavi se na posao od kuće',
   },
   {
     name: 'clock-out',
@@ -104,6 +61,10 @@ const commands = [
         required: false,
       },
     ],
+  },
+  {
+    name: 'break',
+    description: 'Započni 60-minutnu pauzu (automatski se završava)',
   },
   {
     name: 'who-is-online',

@@ -80,106 +80,6 @@ export default async function handler(req, res) {
         const { name, options } = data;
 
         switch (name) {
-          case 'vacation-status':
-            const discordUserId = user?.id;
-            if (!discordUserId) {
-              return res.status(200).json({
-                type: 4,
-                data: {
-                  content: 'Could not identify Discord user.',
-                  flags: 64
-                }
-              });
-            }
-
-            const dbUser = await db.select().from(users).where(eq(users.discordId, discordUserId)).limit(1);
-
-            if (dbUser.length === 0) {
-              return res.status(200).json({
-                type: 4,
-                data: {
-                  content: 'Your Discord account is not linked to Vacation Tracker. Please login via Discord OAuth first.',
-                  flags: 64
-                }
-              });
-            }
-
-            const userData = dbUser[0];
-
-            const approvedRequests = await db.select()
-              .from(vacationRequests)
-              .where(and(
-                eq(vacationRequests.employeeName, userData.name),
-                eq(vacationRequests.status, 'Approved')
-              ));
-
-            const totalApprovedDays = approvedRequests.reduce((sum, req) => sum + req.days, 0);
-            const remainingDays = userData.vacationDays - totalApprovedDays;
-
-            return res.status(200).json({
-              type: 4,
-              data: {
-                embeds: [{
-                  title: '🏖️ Vacation Status',
-                  description: `**${userData.name}**'s vacation information`,
-                  fields: [
-                    { name: 'Total Vacation Days', value: userData.vacationDays.toString(), inline: true },
-                    { name: 'Used Days', value: totalApprovedDays.toString(), inline: true },
-                    { name: 'Remaining Days', value: remainingDays.toString(), inline: true },
-                  ],
-                  color: 0x00ff00,
-                  timestamp: new Date().toISOString(),
-                }],
-                flags: 64
-              }
-            });
-
-          case 'request-vacation':
-            const startDate = options?.find(opt => opt.name === 'start_date')?.value;
-            const endDate = options?.find(opt => opt.name === 'end_date')?.value;
-            const days = options?.find(opt => opt.name === 'days')?.value;
-            const reason = options?.find(opt => opt.name === 'reason')?.value;
-
-            if (!startDate || !endDate || !days) {
-              return res.status(200).json({
-                type: 4,
-                data: {
-                  content: 'Please provide start date, end date, and number of days.',
-                  flags: 64
-                }
-              });
-            }
-
-            const discordUserId2 = user?.id;
-            const dbUser2 = await db.select().from(users).where(eq(users.discordId, discordUserId2)).limit(1);
-
-            if (dbUser2.length === 0) {
-              return res.status(200).json({
-                type: 4,
-                data: {
-                  content: 'Your Discord account is not linked.',
-                  flags: 64
-                }
-              });
-            }
-
-            const newRequest = await db.insert(vacationRequests).values({
-              employeeName: dbUser2[0].name,
-              startDate: new Date(startDate),
-              endDate: new Date(endDate),
-              days: parseInt(days),
-              status: 'Pending',
-              type: 'Vacation',
-              notes: reason || '',
-            }).returning();
-
-            return res.status(200).json({
-              type: 4,
-              data: {
-                content: `✅ Vacation request submitted! ${days} days from ${startDate} to ${endDate}`,
-                flags: 64
-              }
-            });
 
           case 'check-hours':
             const discordUserId3 = user?.id;
@@ -229,8 +129,7 @@ export default async function handler(req, res) {
               }
             });
 
-          case 'clock-in':
-            const workType = options?.find(opt => opt.name === 'work_type')?.value || 'Office';
+          case 'wfo':
             const discordUserId4 = user?.id;
             const dbUser4 = await db.select().from(users).where(eq(users.discordId, discordUserId4)).limit(1);
 
@@ -265,13 +164,13 @@ export default async function handler(req, res) {
 
             if (existingEntry.length > 0) {
               await db.update(timeEntries)
-                .set({ isClockedIn: true, lastClockIn: new Date(), workType })
+                .set({ isClockedIn: true, lastClockIn: new Date(), workType: 'Office' })
                 .where(eq(timeEntries.id, existingEntry[0].id));
             } else {
               await db.insert(timeEntries).values({
                 employeeName: dbUser4[0].name,
                 date: today,
-                workType,
+                workType: 'Office',
                 isClockedIn: true,
                 lastClockIn: new Date(),
                 breaks: [],
@@ -283,7 +182,65 @@ export default async function handler(req, res) {
             return res.status(200).json({
               type: 4,
               data: {
-                content: `✅ Clocked in successfully! Work type: ${workType}`,
+                content: `✅ Clocked in successfully! Work from office`,
+                flags: 64
+              }
+            });
+
+          case 'wfh':
+            const discordUserId4b = user?.id;
+            const dbUser4b = await db.select().from(users).where(eq(users.discordId, discordUserId4b)).limit(1);
+
+            if (dbUser4b.length === 0) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: 'Your Discord account is not linked.',
+                  flags: 64
+                }
+              });
+            }
+
+            const todayb = new Date();
+            todayb.setHours(0, 0, 0, 0);
+            const existingEntryb = await db.select()
+              .from(timeEntries)
+              .where(and(
+                eq(timeEntries.employeeName, dbUser4b[0].name),
+                eq(timeEntries.date, todayb)
+              )).limit(1);
+
+            if (existingEntryb.length > 0 && existingEntryb[0].isClockedIn) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '❌ You are already clocked in today!',
+                  flags: 64
+                }
+              });
+            }
+
+            if (existingEntryb.length > 0) {
+              await db.update(timeEntries)
+                .set({ isClockedIn: true, lastClockIn: new Date(), workType: 'Home' })
+                .where(eq(timeEntries.id, existingEntryb[0].id));
+            } else {
+              await db.insert(timeEntries).values({
+                employeeName: dbUser4b[0].name,
+                date: todayb,
+                workType: 'Home',
+                isClockedIn: true,
+                lastClockIn: new Date(),
+                breaks: [],
+                offs: [],
+                totalWorkingMinutes: 0,
+              });
+            }
+
+            return res.status(200).json({
+              type: 4,
+              data: {
+                content: `✅ Clocked in successfully! Work from home`,
                 flags: 64
               }
             });
@@ -483,6 +440,64 @@ export default async function handler(req, res) {
               type: 4,
               data: {
                 content: `🤒 Sick leave reported successfully. Reason: ${sickReason}`,
+                flags: 64
+              }
+            });
+
+          case 'break':
+            const discordUserId9 = user?.id;
+            const dbUser9 = await db.select().from(users).where(eq(users.discordId, discordUserId9)).limit(1);
+
+            if (dbUser9.length === 0) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: 'Your Discord account is not linked.',
+                  flags: 64
+                }
+              });
+            }
+
+            const today6 = new Date();
+            today6.setHours(0, 0, 0, 0);
+            const entry4 = await db.select()
+              .from(timeEntries)
+              .where(and(
+                eq(timeEntries.employeeName, dbUser9[0].name),
+                eq(timeEntries.date, today6)
+              )).limit(1);
+
+            if (entry4.length === 0 || !entry4[0].isClockedIn) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '❌ You are not clocked in today!',
+                  flags: 64
+                }
+              });
+            }
+
+            if (entry4[0].breaks.some(b => !b.end)) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '❌ You are already on break!',
+                  flags: 64
+                }
+              });
+            }
+
+            const breakStart = new Date();
+            const breakEnd = new Date(breakStart.getTime() + 60 * 60 * 1000); // 60 minutes
+
+            await db.update(timeEntries)
+              .set({ breaks: [...entry4[0].breaks, { start: breakStart, end: breakEnd }] })
+              .where(eq(timeEntries.id, entry4[0].id));
+
+            return res.status(200).json({
+              type: 4,
+              data: {
+                content: '☕ Started 60-minute break. Will automatically end at ' + breakEnd.toLocaleTimeString(),
                 flags: 64
               }
             });
