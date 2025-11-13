@@ -3,7 +3,9 @@ const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const REDIRECT_URI = process.env.DISCORD_CALLBACK_URL;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-const users = new Map();
+const { db } = require('../../../drizzle/db.js');
+const { users } = require('../../../drizzle/schema.js');
+const { eq } = require('drizzle-orm');
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -51,31 +53,33 @@ export default async function handler(req, res) {
 
         const profile = await userResponse.json();
 
-        // Create or find user
-        let user = Array.from(users.values()).find(u => u.discordId === profile.id);
+        // Find or create user in database
+        let dbUser = await db.select().from(users).where(eq(users.discordId, profile.id)).limit(1);
 
-        if (!user) {
-          user = {
-            id: Date.now().toString(),
-            discordId: profile.id,
-            email: profile.email,
+        if (dbUser.length === 0) {
+          // Create new user
+          const newUser = {
             name: profile.username,
-            picture: profile.avatar ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png` : null,
+            email: profile.email,
+            discordId: profile.id,
             roles: ['Employee'],
             vacationDays: 20,
             paidLeaveDays: 7
           };
 
-          if (user.email === 'nikola@valens.dev') {
-            user.roles = ['Admin', 'Employee'];
-            user.vacationDays = 25;
+          if (newUser.email === 'nikola@valens.dev') {
+            newUser.roles = ['Admin', 'Employee'];
+            newUser.vacationDays = 25;
           }
 
-          users.set(user.id, user);
+          const inserted = await db.insert(users).values(newUser).returning();
+          dbUser = inserted;
+        } else {
+          dbUser = dbUser[0];
         }
 
         // Redirect back to client
-        res.redirect(`${CLIENT_URL}?discord_login=success&user_name=${encodeURIComponent(user.name)}&user_email=${encodeURIComponent(user.email)}`);
+        res.redirect(`${CLIENT_URL}?discord_login=success&user_name=${encodeURIComponent(dbUser.name)}&user_email=${encodeURIComponent(dbUser.email)}`);
       } catch (error) {
         console.error('Discord OAuth error:', error);
         res.status(500).json({ error: 'OAuth failed' });
