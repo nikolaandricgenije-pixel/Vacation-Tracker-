@@ -9,7 +9,27 @@
       "destination": "/api/:path*"
     },
     {
-      "source": "/((?!assets|favicon|manifest|sw|icon).*)",
+      "source": "/assets/:path*",
+      "destination": "/dist/assets/:path*"
+    },
+    {
+      "source": "/manifest.json",
+      "destination": "/dist/manifest.json"
+    },
+    {
+      "source": "/sw.js",
+      "destination": "/dist/sw.js"
+    },
+    {
+      "source": "/icon-:size.png",
+      "destination": "/dist/icon-:size.png"
+    },
+    {
+      "source": "/vite.svg",
+      "destination": "/dist/vite.svg"
+    },
+    {
+      "source": "/((?!favicon).*)",
       "destination": "/dist/index.html"
     }
   ],
