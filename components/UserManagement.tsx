@@ -17,6 +17,8 @@ function UserManagement() {
   const [vacationDays, setVacationDays] = useState(20);
   const [paidLeaveDays, setPaidLeaveDays] = useState(7);
   const [error, setError] = useState<string | null>(null);
+  const [discordStatus, setDiscordStatus] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,8 +76,56 @@ function UserManagement() {
     setPaidLeaveDays(7);
   };
 
+  const handleRegisterDiscordCommands = async () => {
+    setIsRegistering(true);
+    setDiscordStatus(null);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_URL}/api/discord/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setDiscordStatus(`✅ Successfully registered ${data.commands?.length || 0} Discord commands!`);
+      } else {
+        setDiscordStatus(`❌ Error: ${data.error || 'Failed to register commands'}`);
+      }
+    } catch (error) {
+      setDiscordStatus(`❌ Network error: ${error.message}`);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      <Card>
+        <div className="p-4">
+          <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 mb-4">Discord Bot Management</h3>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Register Discord slash commands for the bot. This needs to be done once after setting up environment variables.
+            </p>
+            <Button
+              onClick={handleRegisterDiscordCommands}
+              disabled={isRegistering}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {isRegistering ? 'Registering...' : 'Register Discord Commands'}
+            </Button>
+            {discordStatus && (
+              <div className={`p-3 rounded-md text-sm ${discordStatus.includes('✅') ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300'}`}>
+                {discordStatus}
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+
       <Card>
         <div className="p-4">
           <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 mb-4">Current Users</h3>
