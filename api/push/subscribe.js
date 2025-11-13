@@ -1,6 +1,6 @@
 import webPush from 'web-push';
-import { db } from '../../drizzle/db.js';
-import { users } from '../../drizzle/schema.js';
+import { db } from '../drizzle/db.js';
+import { users } from '../drizzle/schema.js';
 import { eq } from 'drizzle-orm';
 
 const vapidKeys = {

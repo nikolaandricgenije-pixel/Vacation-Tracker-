@@ -20,6 +20,7 @@ export default async function handler(req, res) {
     const redirectUri = process.env.DISCORD_CALLBACK_URL;
 
     if (!clientId || !clientSecret || !redirectUri) {
+      console.error('Missing Discord credentials');
       return res.status(500).json({ error: 'Discord credentials not configured' });
     }
 
@@ -87,6 +88,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Discord OAuth error:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 }

@@ -1,5 +1,5 @@
-import { db } from '../drizzle/db.js';
-import { users, vacationRequests, timeEntries } from '../drizzle/schema.js';
+import { db } from './drizzle/db.js';
+import { users, vacationRequests, timeEntries } from './drizzle/schema.js';
 import { eq, and, gte } from 'drizzle-orm';
 
 export default async function handler(req, res) {

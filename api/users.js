@@ -1,5 +1,5 @@
-import { db } from '../drizzle/db.js';
-import { users } from '../drizzle/schema.js';
+import { db } from './drizzle/db.js';
+import { users } from './drizzle/schema.js';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
