@@ -109,9 +109,7 @@ function ClockWidget() {
 
   const timeDisplay = isClockedIn
     ? `${displayHours.toString().padStart(2, '0')}:${displayMinutes.toString().padStart(2, '0')}:${displaySeconds.toString().padStart(2, '0')}`
-    : todayHours > 0
-    ? `${Math.floor(todayHours)}:${Math.floor((todayHours % 1) * 60).toString().padStart(2, '0')}h worked`
-    : '00:00:00';
+    : `${Math.floor(todayHours)}:${Math.floor((todayHours % 1) * 60).toString().padStart(2, '0')}:${Math.floor(((todayHours % 1) * 60 % 1) * 60).toString().padStart(2, '0')}`;
 
   const handleClockIn = () => {
     dispatch({ type: 'CLOCK_IN', payload: { workType: selectedWorkType } });

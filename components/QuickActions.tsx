@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useVacationState, useVacationDispatch } from '../context/VacationContext';
 import { VacationStatus, LeaveType, WorkType } from '../types';
 import Button from './ui/Button';
@@ -10,6 +10,7 @@ import PencilIcon from './icons/PencilIcon';
 function QuickActions() {
   const { requests, currentUser, timeEntries } = useVacationState();
   const dispatch = useVacationDispatch();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const userRequests = requests.filter(r => r.employeeName === currentUser?.name);
   const pendingRequests = userRequests.filter(r => r.status === VacationStatus.Pending);
@@ -18,6 +19,47 @@ function QuickActions() {
 
   const todayEntries = timeEntries.filter(e => e.employeeName === currentUser?.name && e.date.toDateString() === new Date().toDateString());
   const todayHours = todayEntries.reduce((sum, e) => sum + e.totalWorkingMinutes, 0) / 60;
+
+  // Auto-refresh time entries every 30 seconds to sync with Discord commands
+  useEffect(() => {
+    const autoRefresh = setInterval(() => {
+      if (currentUser) {
+        handleRefresh();
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(autoRefresh);
+  }, [currentUser]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_URL}/api/time-entries`);
+      if (response.ok) {
+        const timeEntries = await response.json();
+        // Convert date strings to Date objects
+        const convertedEntries = timeEntries.map((entry: any) => ({
+          ...entry,
+          date: new Date(entry.date),
+          lastClockIn: entry.lastClockIn ? new Date(entry.lastClockIn) : null,
+          breaks: entry.breaks.map((b: any) => ({
+            start: new Date(b.start),
+            end: b.end ? new Date(b.end) : null,
+          })),
+          offs: entry.offs.map((o: any) => ({
+            start: new Date(o.start),
+            end: o.end ? new Date(o.end) : null,
+          })),
+        }));
+        dispatch({ type: 'SET_TIME_ENTRIES', payload: convertedEntries });
+      }
+    } catch (error) {
+      console.error('Failed to refresh time entries:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleQuickRequest = () => {
     // Scroll to form or open modal
@@ -45,14 +87,24 @@ function QuickActions() {
       </Card>
 
       <Card className="p-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-green-100 dark:bg-green-500/20 rounded-lg">
-            <ClockIcon />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-green-100 dark:bg-green-500/20 rounded-lg">
+              <ClockIcon />
+            </div>
+            <div>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Today's Hours</p>
+              <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{todayHours.toFixed(1)}h</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Today's Hours</p>
-            <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">{todayHours.toFixed(1)}h</p>
-          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+            title="Refresh today's hours"
+          >
+            <span className={`text-sm ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
+          </button>
         </div>
       </Card>
 
