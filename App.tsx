@@ -21,6 +21,64 @@ function NotificationActionHandler() {
    useEffect(() => {
       const urlParams = new URLSearchParams(window.location.search);
       const action = urlParams.get('action');
+      const discordLogin = urlParams.get('discord_login');
+      const userEmail = urlParams.get('user_email');
+
+      // Handle Discord OAuth success
+      if (discordLogin === 'success' && userEmail) {
+         console.log('[FRONTEND] Discord login success for:', userEmail);
+         // Clear the URL parameters
+         const newUrl = window.location.pathname;
+         window.history.replaceState({}, '', newUrl);
+
+         // Try to find and switch to the Discord user
+         // First check if user exists in current state
+         const { users } = useVacationState();
+         const discordUser = users.find(u => u.email === userEmail);
+
+         if (discordUser) {
+            dispatch({ type: 'SWITCH_USER', payload: { userName: discordUser.name } });
+            dispatch({
+               type: 'ADD_NOTIFICATION',
+               payload: {
+                  id: new Date().toISOString(),
+                  type: 'success',
+                  message: 'Discord account linked successfully!',
+               },
+            });
+         } else {
+            // User not found in frontend state, try to reload users from API
+            const loadDiscordUser = async () => {
+               try {
+                  const API_URL = import.meta.env.VITE_API_URL || '';
+                  const usersResponse = await fetch(`${API_URL}/api/users`);
+                  if (usersResponse.ok) {
+                     const updatedUsers = await usersResponse.json();
+                     dispatch({ type: 'SET_USERS', payload: updatedUsers });
+
+                     // Now try to find the user again
+                     const foundUser = updatedUsers.find((u: any) => u.email === userEmail);
+                     if (foundUser) {
+                        dispatch({ type: 'SWITCH_USER', payload: { userName: foundUser.name } });
+                        dispatch({
+                           type: 'ADD_NOTIFICATION',
+                           payload: {
+                              id: new Date().toISOString(),
+                              type: 'success',
+                              message: 'Discord account linked successfully!',
+                           },
+                        });
+                     }
+                  }
+               } catch (error) {
+                  console.error('Failed to load Discord user:', error);
+               }
+            };
+            loadDiscordUser();
+         }
+
+         return;
+      }
 
       if (action) {
          // Clear the URL parameter

@@ -5,11 +5,18 @@ import Button from './ui/Button';
 import ClockIcon from './icons/ClockIcon';
 import { format, differenceInSeconds, startOfDay, isAfter } from 'date-fns';
 
+const RefreshIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+);
+
 function ClockWidget() {
-  const { timeEntries, currentUser } = useVacationState();
-  const dispatch = useVacationDispatch();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedWorkType, setSelectedWorkType] = useState<WorkType>(WorkType.Office);
+   const { timeEntries, currentUser } = useVacationState();
+   const dispatch = useVacationDispatch();
+   const [currentTime, setCurrentTime] = useState(new Date());
+   const [selectedWorkType, setSelectedWorkType] = useState<WorkType>(WorkType.Office);
+   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -95,6 +102,38 @@ function ClockWidget() {
     dispatch({ type: 'END_OFF' });
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_URL}/api/time-entries`);
+      if (response.ok) {
+        const timeEntries = await response.json();
+        // Convert date strings to Date objects
+        const convertedEntries = timeEntries.map((entry: any) => ({
+          ...entry,
+          date: new Date(entry.date),
+          lastClockIn: entry.lastClockIn ? new Date(entry.lastClockIn) : null,
+          breaks: entry.breaks.map((b: any) => ({
+            start: new Date(b.start),
+            end: b.end ? new Date(b.end) : null,
+          })),
+          offs: entry.offs.map((o: any) => ({
+            start: new Date(o.start),
+            end: o.end ? new Date(o.end) : null,
+          })),
+        }));
+        // Update the time entries in state
+        // Note: This is a simplified approach. In a real app, you'd have a proper action for this
+        dispatch({ type: 'SET_TIME_ENTRIES', payload: convertedEntries });
+      }
+    } catch (error) {
+      console.error('Failed to refresh time entries:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 rounded-2xl p-8 text-white shadow-2xl mb-8 relative overflow-hidden animate-slide-in-up">
       {/* Animated Background Pattern */}
@@ -111,13 +150,23 @@ function ClockWidget() {
             <div className={`p-2 rounded-lg backdrop-blur-sm transition-all duration-300 ${
               isClockedIn ? 'bg-green-500/20 animate-pulse-glow' : 'bg-white/20'
             }`}>
-              <ClockIcon className="w-6 h-6" />
+              <ClockIcon />
             </div>
             <div>
               <h2 className="text-xl font-bold">Time Tracker</h2>
               <p className="text-sm opacity-80">{format(currentTime, 'EEEE, MMMM d')}</p>
             </div>
           </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh data from Discord commands"
+          >
+            <RefreshIcon className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
 
           {/* Enhanced Status Badge */}
           <div className={`px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-sm border transition-all duration-500 animate-scale-in ${

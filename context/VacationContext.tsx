@@ -44,7 +44,8 @@ type Action =
     | { type: 'RESET_DAILY_ENTRIES' }
     | { type: 'SET_NOTIFICATION_PERMISSION'; payload: NotificationPermission }
     | { type: 'SET_USERS'; payload: User[] }
-    | { type: 'SET_REQUESTS'; payload: VacationRequest[] };
+    | { type: 'SET_REQUESTS'; payload: VacationRequest[] }
+    | { type: 'SET_TIME_ENTRIES'; payload: TimeEntry[] };
   
 const users: User[] = [
     { name: 'Nikola Andrić', email: 'nikola@valens.dev', roles: ['Admin', 'Employee'], vacationDays: 25, paidLeaveDays: 7 },
@@ -435,6 +436,11 @@ function vacationReducer(state: State, action: Action): State {
       return {
         ...state,
         requests: action.payload,
+      };
+    case 'SET_TIME_ENTRIES':
+      return {
+        ...state,
+        timeEntries: action.payload,
       };
     default:
       return state;
