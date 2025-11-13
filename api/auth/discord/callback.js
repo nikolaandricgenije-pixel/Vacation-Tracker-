@@ -3,6 +3,8 @@ import { users } from '../../drizzle/schema.js';
 import { eq } from 'drizzle-orm';
 
 export default async function handler(req, res) {
+  console.log('[DEBUG] Discord callback initiated with query:', req.query);
+
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
@@ -11,6 +13,7 @@ export default async function handler(req, res) {
   const { code } = req.query;
 
   if (!code) {
+    console.error('[DEBUG] No authorization code provided in callback');
     return res.status(400).json({ error: 'No code provided' });
   }
 
@@ -19,11 +22,19 @@ export default async function handler(req, res) {
     const clientSecret = process.env.DISCORD_CLIENT_SECRET;
     const redirectUri = process.env.DISCORD_CALLBACK_URL;
 
+    console.log('[DEBUG] Environment variables check:', {
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+      hasRedirectUri: !!redirectUri,
+      redirectUri
+    });
+
     if (!clientId || !clientSecret || !redirectUri) {
-      console.error('Missing Discord credentials');
+      console.error('[DEBUG] Missing Discord credentials');
       return res.status(500).json({ error: 'Discord credentials not configured' });
     }
 
+    console.log('[DEBUG] Exchanging code for token...');
     const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       headers: {
@@ -39,12 +50,14 @@ export default async function handler(req, res) {
     });
 
     const tokenData = await tokenResponse.json();
+    console.log('[DEBUG] Token response status:', tokenResponse.status, 'data:', tokenData);
 
     if (!tokenResponse.ok) {
-      console.error('Discord token exchange failed:', tokenData);
+      console.error('[DEBUG] Discord token exchange failed:', tokenData);
       return res.status(500).json({ error: 'Failed to get Discord token', details: tokenData });
     }
 
+    console.log('[DEBUG] Fetching Discord user data...');
     const userResponse = await fetch('https://discord.com/api/users/@me', {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
@@ -52,13 +65,16 @@ export default async function handler(req, res) {
     });
 
     const userData = await userResponse.json();
+    console.log('[DEBUG] Discord user data:', userData);
 
     if (!userResponse.ok) {
-      console.error('Discord user fetch failed:', userData);
+      console.error('[DEBUG] Discord user fetch failed:', userData);
       return res.status(500).json({ error: 'Failed to get Discord user', details: userData });
     }
 
+    console.log('[DEBUG] Looking up user with Discord ID:', userData.id);
     let user = await db.select().from(users).where(eq(users.discordId, userData.id)).limit(1);
+    console.log('[DEBUG] User lookup result:', user.length > 0 ? 'Found existing user' : 'No user found');
 
     if (user.length === 0) {
       const newUser = {
@@ -70,20 +86,26 @@ export default async function handler(req, res) {
         paidLeaveDays: 7,
       };
 
+      console.log('[DEBUG] Creating new user:', newUser);
+
       if (newUser.email === 'nikola@valens.dev') {
         newUser.roles = ['Admin', 'Employee'];
         newUser.vacationDays = 25;
+        console.log('[DEBUG] Upgrading to admin role');
       }
 
       const inserted = await db.insert(users).values(newUser).returning();
       user = inserted;
+      console.log('[DEBUG] New user created:', user);
     } else {
       user = user[0];
+      console.log('[DEBUG] Using existing user:', user);
     }
 
     const clientUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
     const frontendUrl = `${clientUrl}?discord_login=success&user_email=${encodeURIComponent(user.email)}`;
-    
+    console.log('[DEBUG] Redirecting to frontend:', frontendUrl);
+
     res.redirect(frontendUrl);
 
   } catch (error) {

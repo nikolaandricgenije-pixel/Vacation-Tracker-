@@ -474,6 +474,10 @@ export function VacationProvider({ children }: { children: ReactNode }) {
          if (usersResponse.ok) {
            const users = await usersResponse.json();
            dispatch({ type: 'SET_USERS', payload: users });
+         } else {
+           // Fallback to hardcoded users if API fails
+           console.log('[DEBUG] API failed to load users, using fallback users');
+           dispatch({ type: 'SET_USERS', payload: users });
          }
 
          // Load requests
@@ -489,16 +493,19 @@ export function VacationProvider({ children }: { children: ReactNode }) {
            dispatch({ type: 'SET_REQUESTS', payload: convertedRequests });
          }
 
-         // Check for remembered user
+         // Check for remembered user (use loaded users or fallback)
          const rememberedUser = localStorage.getItem('rememberedUser');
          if (rememberedUser) {
-           const user = users.find((u: any) => u.name === rememberedUser);
+           const currentUsers = users; // Use the users variable from above
+           const user = currentUsers.find((u: any) => u.name === rememberedUser);
            if (user) {
              dispatch({ type: 'LOGIN', payload: { userName: user.name } });
            }
          }
        } catch (error) {
-         console.error('Failed to load data from API', error);
+         console.error('Failed to load data from API, using fallback users', error);
+         // Fallback to hardcoded users if API completely fails
+         dispatch({ type: 'SET_USERS', payload: users });
        }
      };
 

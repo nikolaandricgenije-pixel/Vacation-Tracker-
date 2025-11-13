@@ -12,14 +12,20 @@ function Login() {
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
+        console.log('[DEBUG] Login useEffect triggered, users loaded:', users.length);
         const urlParams = new URLSearchParams(window.location.search);
         const discordLogin = urlParams.get('discord_login');
         const userEmail = urlParams.get('user_email');
 
+        console.log('[DEBUG] URL params:', { discordLogin, userEmail });
+
         if (discordLogin === 'success' && userEmail) {
+            console.log('[DEBUG] Processing Discord login success');
             const user = users.find(u => u.email.toLowerCase() === userEmail.toLowerCase());
+            console.log('[DEBUG] Found user in state:', user ? user.name : 'null');
 
             if (user) {
+                console.log('[DEBUG] Dispatching login for user:', user.name);
                 dispatch({ type: 'LOGIN', payload: { userName: user.name } });
 
                 if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
@@ -44,6 +50,7 @@ function Login() {
                     },
                 });
             } else {
+                console.log('[DEBUG] User not found in state, setting error');
                 setError('User not found. Please try again or contact support.');
             }
         }
