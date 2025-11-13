@@ -93,6 +93,22 @@ const commands = [
     name: 'end-off',
     description: 'Završi off-duty period (nastavi timer)',
   },
+  {
+    name: 'off-sick',
+    description: 'Prijavi bolovanje (sick leave)',
+    options: [
+      {
+        name: 'reason',
+        description: 'Razlog bolovanja',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+    ],
+  },
+  {
+    name: 'who-is-online',
+    description: 'Prikaži ko je trenutno na poslu',
+  },
 ];
 
 const rest = new REST({ version: '9' }).setToken(DISCORD_BOT_TOKEN);

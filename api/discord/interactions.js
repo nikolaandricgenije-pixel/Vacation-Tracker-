@@ -452,6 +452,88 @@ export default async function handler(req, res) {
               }
             });
 
+          case 'off-sick':
+            const sickReason = options?.find(opt => opt.name === 'reason')?.value || 'Not specified';
+            const discordUserId8 = user?.id;
+            const dbUser8 = await db.select().from(users).where(eq(users.discordId, discordUserId8)).limit(1);
+
+            if (dbUser8.length === 0) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: 'Your Discord account is not linked.',
+                  flags: 64
+                }
+              });
+            }
+
+            // Create a sick leave request
+            const today5 = new Date();
+            await db.insert(vacationRequests).values({
+              employeeName: dbUser8[0].name,
+              startDate: today5,
+              endDate: today5, // Single day for now, can be extended
+              days: 1,
+              status: 'Approved', // Auto-approve sick leave
+              type: 'SickLeave',
+              notes: `Reported via Discord: ${sickReason}`,
+            });
+
+            return res.status(200).json({
+              type: 4,
+              data: {
+                content: `🤒 Sick leave reported successfully. Reason: ${sickReason}`,
+                flags: 64
+              }
+            });
+
+          case 'who-is-online':
+            // Get all users who are currently clocked in
+            const allTimeEntries = await db.select().from(timeEntries);
+            const onlineUsers = [];
+
+            for (const entry of allTimeEntries) {
+              const entryDate = new Date(entry.date);
+              const today6 = new Date();
+              today6.setHours(0, 0, 0, 0);
+
+              if (entryDate.getTime() === today6.getTime() && entry.isClockedIn) {
+                const userInfo = await db.select().from(users).where(eq(users.name, entry.employeeName)).limit(1);
+                if (userInfo.length > 0) {
+                  onlineUsers.push({
+                    name: entry.employeeName,
+                    workType: entry.workType,
+                    clockedInAt: entry.lastClockIn ? new Date(entry.lastClockIn).toLocaleTimeString() : 'Unknown'
+                  });
+                }
+              }
+            }
+
+            if (onlineUsers.length === 0) {
+              return res.status(200).json({
+                type: 4,
+                data: {
+                  content: '👥 No one is currently clocked in.',
+                  flags: 64
+                }
+              });
+            }
+
+            const onlineList = onlineUsers.map(u => `• ${u.name} (${u.workType}) - Since ${u.clockedInAt}`).join('\n');
+
+            return res.status(200).json({
+              type: 4,
+              data: {
+                embeds: [{
+                  title: '👥 Currently Online',
+                  description: onlineList,
+                  color: 0x00ff00,
+                  timestamp: new Date().toISOString(),
+                }],
+                flags: 64
+              }
+            });
+
           default:
             return res.status(200).json({
               type: 4,

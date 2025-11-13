@@ -140,7 +140,9 @@ function Header() {
            <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">Plan your time off with ease.</p>
         </div>
         <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600 dark:text-slate-400">Logged in as: {currentUser.name}</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">
+              Logged in as: {currentUser.firstName && currentUser.lastName ? `${currentUser.firstName} ${currentUser.lastName}` : currentUser.name}
+            </span>
             <DiscordStatus />
             <button
               onClick={() => setNotificationsOpen(!notificationsOpen)}

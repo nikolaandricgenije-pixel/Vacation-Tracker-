@@ -7,6 +7,7 @@ import VacationList from './components/VacationList';
 import Card from './components/ui/Card';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import UserManagement from './components/UserManagement';
+import UserManagementAdmin from './components/UserManagementAdmin';
 import TimeTracker from './components/TimeTracker';
 import Login from './components/Login';
 import QuickActions from './components/QuickActions';
@@ -389,7 +390,7 @@ function AppContent() {
                           </h3>
                           <span className="text-sm text-slate-500 dark:text-slate-400">Manage team members</span>
                         </div>
-                        <UserManagement />
+                        <UserManagementAdmin />
                       </div>
                     </Card>
                   </section>

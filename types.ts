@@ -21,11 +21,15 @@ export enum VacationStatus {
 }
 
 export interface User {
+    id?: number;
     name: string;
     email: string;
+    firstName?: string;
+    lastName?: string;
     roles: ('Admin' | 'Employee' | 'Project Manager' | 'CEO')[];
     vacationDays: number;
     paidLeaveDays: number;
+    discordId?: string;
 }
 
 export interface VacationRequest {
