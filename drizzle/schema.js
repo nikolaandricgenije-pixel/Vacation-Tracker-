@@ -1,6 +1,6 @@
-import { pgTable, text, integer, timestamp, boolean, jsonb, serial } from 'drizzle-orm/pg-core';
+const { pgTable, text, integer, timestamp, boolean, jsonb, serial } = require('drizzle-orm/pg-core');
 
-export const users = pgTable('users', {
+const users = pgTable('users', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -13,7 +13,7 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const vacationRequests = pgTable('vacation_requests', {
+const vacationRequests = pgTable('vacation_requests', {
   id: serial('id').primaryKey(),
   employeeName: text('employee_name').notNull(),
   startDate: timestamp('start_date').notNull(),
@@ -25,7 +25,7 @@ export const vacationRequests = pgTable('vacation_requests', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const timeEntries = pgTable('time_entries', {
+const timeEntries = pgTable('time_entries', {
   id: serial('id').primaryKey(),
   employeeName: text('employee_name').notNull(),
   date: timestamp('date').notNull(),
@@ -38,7 +38,7 @@ export const timeEntries = pgTable('time_entries', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const notifications = pgTable('notifications', {
+const notifications = pgTable('notifications', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id),
   type: text('type').notNull(),
@@ -46,3 +46,10 @@ export const notifications = pgTable('notifications', {
   read: boolean('read').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+module.exports = {
+  users,
+  vacationRequests,
+  timeEntries,
+  notifications,
+};

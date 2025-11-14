@@ -1,7 +1,7 @@
-import { db } from './drizzle/db.js';
-import { users } from './drizzle/schema.js';
+const { db } = require('../drizzle/db.js');
+const { users } = require('../drizzle/schema.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const allUsers = await db.select().from(users);

@@ -1,8 +1,8 @@
-import { db } from '../../drizzle/db.js';
-import { users } from '../../drizzle/schema.js';
-import { eq } from 'drizzle-orm';
+const { db } = require('../../../drizzle/db.js');
+const { users } = require('../../../drizzle/schema.js');
+const { eq } = require('drizzle-orm');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   console.log('[DEBUG] Discord callback initiated with query:', req.query);
 
   if (req.method !== 'GET') {
