@@ -4,6 +4,7 @@ import { WorkType } from '../types';
 import Button from './ui/Button';
 import ClockIcon from './icons/ClockIcon';
 import { format, differenceInSeconds, startOfDay, isAfter } from 'date-fns';
+import { normalizeTimeEntries } from '../utils/timeEntries';
 
 const RefreshIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -141,24 +142,10 @@ function ClockWidget() {
       const API_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_URL}/api/time-entries`);
       if (response.ok) {
-        const timeEntries = await response.json();
-        // Convert date strings to Date objects
-        const convertedEntries = timeEntries.map((entry: any) => ({
-          ...entry,
-          date: new Date(entry.date),
-          lastClockIn: entry.lastClockIn ? new Date(entry.lastClockIn) : null,
-          breaks: entry.breaks.map((b: any) => ({
-            start: new Date(b.start),
-            end: b.end ? new Date(b.end) : null,
-          })),
-          offs: entry.offs.map((o: any) => ({
-            start: new Date(o.start),
-            end: o.end ? new Date(o.end) : null,
-          })),
-        }));
+        const payload = normalizeTimeEntries(await response.json());
         // Update the time entries in state
         // Note: This is a simplified approach. In a real app, you'd have a proper action for this
-        dispatch({ type: 'SET_TIME_ENTRIES', payload: convertedEntries });
+        dispatch({ type: 'SET_TIME_ENTRIES', payload });
       }
     } catch (error) {
       console.error('Failed to refresh time entries:', error);

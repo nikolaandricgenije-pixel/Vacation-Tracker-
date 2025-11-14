@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { useVacationState, useVacationDispatch } from '../context/VacationContext';
 import { VacationStatus, LeaveType, WorkType } from '../types';
+import { normalizeTimeEntries } from '../utils/timeEntries';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import ClockIcon from './icons/ClockIcon';
@@ -37,22 +38,8 @@ function QuickActions() {
       const API_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_URL}/api/time-entries`);
       if (response.ok) {
-        const timeEntries = await response.json();
-        // Convert date strings to Date objects
-        const convertedEntries = timeEntries.map((entry: any) => ({
-          ...entry,
-          date: new Date(entry.date),
-          lastClockIn: entry.lastClockIn ? new Date(entry.lastClockIn) : null,
-          breaks: entry.breaks.map((b: any) => ({
-            start: new Date(b.start),
-            end: b.end ? new Date(b.end) : null,
-          })),
-          offs: entry.offs.map((o: any) => ({
-            start: new Date(o.start),
-            end: o.end ? new Date(o.end) : null,
-          })),
-        }));
-        dispatch({ type: 'SET_TIME_ENTRIES', payload: convertedEntries });
+        const payload = normalizeTimeEntries(await response.json());
+        dispatch({ type: 'SET_TIME_ENTRIES', payload });
       }
     } catch (error) {
       console.error('Failed to refresh time entries:', error);
