@@ -1,12 +1,12 @@
-const { db } = require('../../drizzle/db.js');
-const { users, vacationRequests, timeEntries } = require('../../drizzle/schema.js');
-const { eq, and, gte, lt } = require('drizzle-orm');
-const { webcrypto } = require('crypto');
-const {
+import { db } from '../../drizzle/db.js';
+import { users, vacationRequests, timeEntries } from '../../drizzle/schema.js';
+import { eq, and, gte, lt } from 'drizzle-orm';
+import { webcrypto } from 'crypto';
+import {
   normalizeDbTimeEntry,
   serializeIntervalsForStorage,
   startOfDayLocal,
-} = require('../../lib/server/timeEntries.js');
+} from '../../lib/server/timeEntries.js';
 
 async function verifySignature(publicKey, signature, message) {
   try {

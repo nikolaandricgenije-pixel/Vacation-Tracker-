@@ -1,6 +1,6 @@
-const { db } = require('../../../drizzle/db.js');
-const { users } = require('../../../drizzle/schema.js');
-const { eq } = require('drizzle-orm');
+import { db } from '../../../drizzle/db.js';
+import { users } from '../../../drizzle/schema.js';
+import { eq } from 'drizzle-orm';
 
 module.exports = async function handler(req, res) {
   const { id } = req.query;

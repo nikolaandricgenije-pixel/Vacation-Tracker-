@@ -1,5 +1,5 @@
-const { db } = require('../drizzle/db.js');
-const { users } = require('../drizzle/schema.js');
+import { db } from '../drizzle/db.js';
+import { users } from '../drizzle/schema.js';
 
 module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
