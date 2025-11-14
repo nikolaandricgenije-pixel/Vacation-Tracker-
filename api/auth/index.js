@@ -1,6 +1,9 @@
 export function ensureDiscordConfig() {
   const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
   const REDIRECT_URI = process.env.DISCORD_CALLBACK_URL;
+import { db } from '../../drizzle/db.js';
+import { users } from '../../drizzle/schema.js';
+import { eq } from 'drizzle-orm';
 
   if (!CLIENT_ID || !REDIRECT_URI || CLIENT_ID === 'your-discord-client-id-here' || CLIENT_ID.includes('demo') || !/^\d+$/.test(CLIENT_ID)) {
     return {
