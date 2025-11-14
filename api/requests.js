@@ -2,7 +2,7 @@ import { db } from '../drizzle/db.js';
 import { vacationRequests } from '../drizzle/schema.js';
 import { eq, desc } from 'drizzle-orm';
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const requests = await db.select().from(vacationRequests).orderBy(desc(vacationRequests.createdAt));

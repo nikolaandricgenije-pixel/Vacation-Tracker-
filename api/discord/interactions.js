@@ -39,7 +39,7 @@ async function verifySignature(publicKey, signature, message) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Handle Discord endpoint verification (GET request)
   if (req.method === 'GET') {
     return res.status(200).json({ message: 'Discord interactions endpoint is active' });

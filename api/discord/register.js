@@ -1,13 +1,15 @@
-import { REST } from '@discordjs/rest';
-import { Routes, ApplicationCommandOptionType } from 'discord-api-types/v9';
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
   try {
+    const [{ REST }, { Routes, ApplicationCommandOptionType }] = await Promise.all([
+      import('@discordjs/rest'),
+      import('discord-api-types/v9'),
+    ]);
+
     const { DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID } = process.env;
 
     if (!DISCORD_BOT_TOKEN || !DISCORD_CLIENT_ID) {

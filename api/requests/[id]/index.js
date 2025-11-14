@@ -2,7 +2,7 @@ import { db } from '../../../drizzle/db.js';
 import { vacationRequests } from '../../../drizzle/schema.js';
 import { eq } from 'drizzle-orm';
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { id } = req.query;
 
   if (req.method === 'PUT') {
