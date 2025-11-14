@@ -1,5 +1,8 @@
-import { db } from './drizzle/db.js';
-import { timeEntries } from './drizzle/schema.js';
+import { db } from '../drizzle/db.js';
+import { timeEntries } from '../drizzle/schema.js';
+import {
+  serializeTimeEntryForClient,
+} from '../lib/server/timeEntries.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
