@@ -1,5 +1,5 @@
-import { db } from './db.js';
-import { users } from './schema.js';
+const { db } = require('./db.js');
+const { users } = require('./schema.js');
 
 const seedUsers = [
   {
@@ -46,7 +46,9 @@ async function seed() {
     console.log('Seeding completed!');
   } catch (error) {
     console.error('Error seeding:', error);
+    process.exitCode = 1;
   }
 }
 
 seed();
+

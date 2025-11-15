@@ -1,7 +1,58 @@
-import { db } from '../drizzle/db.js';
-import { users, vacationRequests, timeEntries } from '../drizzle/schema.js';
-import { eq, and, gte } from 'drizzle-orm';
-import { webcrypto } from 'crypto';
+const { db } = require('../../drizzle/db.js');
+const { users, vacationRequests, timeEntries } = require('../../drizzle/schema.js');
+const { eq, and, gte, lt } = require('drizzle-orm');
+const { webcrypto } = require('crypto');
+const {
+  normalizeDbTimeEntry,
+  serializeIntervalsForStorage,
+  startOfDayLocal,
+} = require('../../lib/server/timeEntries.js');
+
+const getDiscordUserId = (interaction) =>
+  interaction?.user?.id || interaction?.member?.user?.id || interaction?.member?.id || null;
+
+const getTodayRange = () => {
+  const start = startOfDayLocal(new Date());
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+};
+
+async function findLinkedUser(discordUserId) {
+  if (!discordUserId) {
+    return null;
+  }
+
+  const rows = await db
+    .select()
+    .from(users)
+    .where(eq(users.discordId, discordUserId))
+    .limit(1);
+
+  return rows.length > 0 ? rows[0] : null;
+}
+
+async function findTodayEntry(employeeName) {
+  if (!employeeName) {
+    return null;
+  }
+
+  const { start, end } = getTodayRange();
+
+  const rows = await db
+    .select()
+    .from(timeEntries)
+    .where(
+      and(
+        eq(timeEntries.employeeName, employeeName),
+        gte(timeEntries.date, start),
+        lt(timeEntries.date, end)
+      )
+    )
+    .limit(1);
+
+  return rows.length > 0 ? normalizeDbTimeEntry(rows[0]) : null;
+}
 
 async function verifySignature(publicKey, signature, message) {
   try {
@@ -34,7 +85,7 @@ async function verifySignature(publicKey, signature, message) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Handle Discord endpoint verification (GET request)
   if (req.method === 'GET') {
     return res.status(200).json({ message: 'Discord interactions endpoint is active' });
@@ -42,7 +93,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { type, data, member, user } = req.body;
+      const { type, data } = req.body;
+
+      const interactionUserId = getDiscordUserId(req.body);
 
       const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY;
       if (!PUBLIC_KEY) {
@@ -87,10 +140,9 @@ export default async function handler(req, res) {
         switch (name) {
 
           case 'check-hours':
-            const discordUserId3 = user?.id;
-            const dbUser3 = await db.select().from(users).where(eq(users.discordId, discordUserId3)).limit(1);
+            const linkedUser = await findLinkedUser(interactionUserId);
 
-            if (dbUser3.length === 0) {
+            if (!linkedUser) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -104,13 +156,20 @@ export default async function handler(req, res) {
             const weekStart = new Date(now);
             weekStart.setDate(now.getDate() - now.getDay() + 1);
             weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 7);
 
-            const weekEntries = await db.select()
+            const weekEntriesRaw = await db.select()
               .from(timeEntries)
               .where(and(
-                eq(timeEntries.employeeName, dbUser3[0].name),
-                gte(timeEntries.date, weekStart)
+                eq(timeEntries.employeeName, linkedUser.name),
+                gte(timeEntries.date, weekStart),
+                lt(timeEntries.date, weekEnd)
               ));
+
+            const weekEntries = weekEntriesRaw
+              .map(normalizeDbTimeEntry)
+              .filter((entry) => entry !== null);
 
             const totalMinutes = weekEntries.reduce((sum, entry) => sum + entry.totalWorkingMinutes, 0);
             const totalHours = Math.floor(totalMinutes / 60);
@@ -121,7 +180,7 @@ export default async function handler(req, res) {
               data: {
                 embeds: [{
                   title: '⏰ Weekly Hours Summary',
-                  description: `${dbUser3[0].name}'s hours this week`,
+                  description: `${linkedUser.name}'s hours this week`,
                   fields: [
                     { name: 'Total Hours', value: `${totalHours}h ${totalMinutes % 60}m`, inline: true },
                     { name: 'Overtime', value: totalHours > overtimeThreshold ? `${totalHours - overtimeThreshold}h` : 'None', inline: true },
@@ -135,10 +194,9 @@ export default async function handler(req, res) {
             });
 
           case 'wfo':
-            const discordUserId4 = user?.id;
-            const dbUser4 = await db.select().from(users).where(eq(users.discordId, discordUserId4)).limit(1);
+            const officeUser = await findLinkedUser(interactionUserId);
 
-            if (dbUser4.length === 0) {
+            if (!officeUser) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -148,16 +206,9 @@ export default async function handler(req, res) {
               });
             }
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const existingEntry = await db.select()
-              .from(timeEntries)
-              .where(and(
-                eq(timeEntries.employeeName, dbUser4[0].name),
-                eq(timeEntries.date, today)
-              )).limit(1);
+            const existingEntry = await findTodayEntry(officeUser.name);
 
-            if (existingEntry.length > 0 && existingEntry[0].isClockedIn) {
+            if (existingEntry && existingEntry.isClockedIn) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -167,19 +218,20 @@ export default async function handler(req, res) {
               });
             }
 
-            if (existingEntry.length > 0) {
+            if (existingEntry) {
               await db.update(timeEntries)
                 .set({ isClockedIn: true, lastClockIn: new Date(), workType: 'Office' })
-                .where(eq(timeEntries.id, existingEntry[0].id));
+                .where(eq(timeEntries.id, existingEntry.id));
             } else {
+              const today = startOfDayLocal(new Date());
               await db.insert(timeEntries).values({
-                employeeName: dbUser4[0].name,
+                employeeName: officeUser.name,
                 date: today,
                 workType: 'Office',
                 isClockedIn: true,
                 lastClockIn: new Date(),
-                breaks: [],
-                offs: [],
+                breaks: serializeIntervalsForStorage([]),
+                offs: serializeIntervalsForStorage([]),
                 totalWorkingMinutes: 0,
               });
             }
@@ -193,10 +245,9 @@ export default async function handler(req, res) {
             });
 
           case 'wfh':
-            const discordUserId4b = user?.id;
-            const dbUser4b = await db.select().from(users).where(eq(users.discordId, discordUserId4b)).limit(1);
+            const homeUser = await findLinkedUser(interactionUserId);
 
-            if (dbUser4b.length === 0) {
+            if (!homeUser) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -206,16 +257,9 @@ export default async function handler(req, res) {
               });
             }
 
-            const todayb = new Date();
-            todayb.setHours(0, 0, 0, 0);
-            const existingEntryb = await db.select()
-              .from(timeEntries)
-              .where(and(
-                eq(timeEntries.employeeName, dbUser4b[0].name),
-                eq(timeEntries.date, todayb)
-              )).limit(1);
+            const existingEntryb = await findTodayEntry(homeUser.name);
 
-            if (existingEntryb.length > 0 && existingEntryb[0].isClockedIn) {
+            if (existingEntryb && existingEntryb.isClockedIn) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -225,19 +269,20 @@ export default async function handler(req, res) {
               });
             }
 
-            if (existingEntryb.length > 0) {
+            if (existingEntryb) {
               await db.update(timeEntries)
                 .set({ isClockedIn: true, lastClockIn: new Date(), workType: 'Home' })
-                .where(eq(timeEntries.id, existingEntryb[0].id));
+                .where(eq(timeEntries.id, existingEntryb.id));
             } else {
+              const today = startOfDayLocal(new Date());
               await db.insert(timeEntries).values({
-                employeeName: dbUser4b[0].name,
-                date: todayb,
+                employeeName: homeUser.name,
+                date: today,
                 workType: 'Home',
                 isClockedIn: true,
                 lastClockIn: new Date(),
-                breaks: [],
-                offs: [],
+                breaks: serializeIntervalsForStorage([]),
+                offs: serializeIntervalsForStorage([]),
                 totalWorkingMinutes: 0,
               });
             }
@@ -251,10 +296,9 @@ export default async function handler(req, res) {
             });
 
           case 'clock-out':
-            const discordUserId5 = user?.id;
-            const dbUser5 = await db.select().from(users).where(eq(users.discordId, discordUserId5)).limit(1);
+            const clockOutUser = await findLinkedUser(interactionUserId);
 
-            if (dbUser5.length === 0) {
+            if (!clockOutUser) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -264,16 +308,9 @@ export default async function handler(req, res) {
               });
             }
 
-            const today2 = new Date();
-            today2.setHours(0, 0, 0, 0);
-            const entry = await db.select()
-              .from(timeEntries)
-              .where(and(
-                eq(timeEntries.employeeName, dbUser5[0].name),
-                eq(timeEntries.date, today2)
-              )).limit(1);
+            const currentEntry = await findTodayEntry(clockOutUser.name);
 
-            if (entry.length === 0 || !entry[0].isClockedIn || !entry[0].lastClockIn) {
+            if (!currentEntry || !currentEntry.isClockedIn || !currentEntry.lastClockIn) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -284,12 +321,12 @@ export default async function handler(req, res) {
             }
 
             const clockOut = new Date();
-            const sessionMinutes = Math.floor((clockOut.getTime() - entry[0].lastClockIn.getTime()) / (1000 * 60));
-            const newTotal = entry[0].totalWorkingMinutes + sessionMinutes;
+            const sessionMinutes = Math.floor((clockOut.getTime() - currentEntry.lastClockIn.getTime()) / (1000 * 60));
+            const newTotal = currentEntry.totalWorkingMinutes + sessionMinutes;
 
             await db.update(timeEntries)
-              .set({ isClockedIn: false, totalWorkingMinutes: newTotal })
-              .where(eq(timeEntries.id, entry[0].id));
+              .set({ isClockedIn: false, totalWorkingMinutes: newTotal, lastClockIn: null })
+              .where(eq(timeEntries.id, currentEntry.id));
 
             return res.status(200).json({
               type: 4,
@@ -300,10 +337,9 @@ export default async function handler(req, res) {
             });
 
           case 'start-off':
-            const discordUserId6 = user?.id;
-            const dbUser6 = await db.select().from(users).where(eq(users.discordId, discordUserId6)).limit(1);
+            const startOffUser = await findLinkedUser(interactionUserId);
 
-            if (dbUser6.length === 0) {
+            if (!startOffUser) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -313,16 +349,9 @@ export default async function handler(req, res) {
               });
             }
 
-            const today3 = new Date();
-            today3.setHours(0, 0, 0, 0);
-            const entry2 = await db.select()
-              .from(timeEntries)
-              .where(and(
-                eq(timeEntries.employeeName, dbUser6[0].name),
-                eq(timeEntries.date, today3)
-              )).limit(1);
+            const entry2 = await findTodayEntry(startOffUser.name);
 
-            if (entry2.length === 0 || !entry2[0].isClockedIn) {
+            if (!entry2 || !entry2.isClockedIn) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -332,7 +361,7 @@ export default async function handler(req, res) {
               });
             }
 
-            if (entry2[0].offs.some(o => !o.end)) {
+            if (entry2.offs.some(o => !o.end)) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -342,9 +371,14 @@ export default async function handler(req, res) {
               });
             }
 
+            const updatedOffs = serializeIntervalsForStorage([
+              ...entry2.offs,
+              { start: new Date() },
+            ]);
+
             await db.update(timeEntries)
-              .set({ offs: [...entry2[0].offs, { start: new Date() }] })
-              .where(eq(timeEntries.id, entry2[0].id));
+              .set({ offs: updatedOffs })
+              .where(eq(timeEntries.id, entry2.id));
 
             return res.status(200).json({
               type: 4,
@@ -355,10 +389,9 @@ export default async function handler(req, res) {
             });
 
           case 'end-off':
-            const discordUserId7 = user?.id;
-            const dbUser7 = await db.select().from(users).where(eq(users.discordId, discordUserId7)).limit(1);
+            const endOffUser = await findLinkedUser(interactionUserId);
 
-            if (dbUser7.length === 0) {
+            if (!endOffUser) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -368,16 +401,9 @@ export default async function handler(req, res) {
               });
             }
 
-            const today4 = new Date();
-            today4.setHours(0, 0, 0, 0);
-            const entry3 = await db.select()
-              .from(timeEntries)
-              .where(and(
-                eq(timeEntries.employeeName, dbUser7[0].name),
-                eq(timeEntries.date, today4)
-              )).limit(1);
+            const entry3 = await findTodayEntry(endOffUser.name);
 
-            if (entry3.length === 0 || !entry3[0].isClockedIn) {
+            if (!entry3 || !entry3.isClockedIn) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -387,7 +413,7 @@ export default async function handler(req, res) {
               });
             }
 
-            const offs = [...entry3[0].offs];
+            const offs = [...entry3.offs];
             const lastOff = offs[offs.length - 1];
 
             if (!lastOff || lastOff.end) {
@@ -403,8 +429,8 @@ export default async function handler(req, res) {
             lastOff.end = new Date();
 
             await db.update(timeEntries)
-              .set({ offs })
-              .where(eq(timeEntries.id, entry3[0].id));
+              .set({ offs: serializeIntervalsForStorage(offs) })
+              .where(eq(timeEntries.id, entry3.id));
 
             return res.status(200).json({
               type: 4,
@@ -416,10 +442,9 @@ export default async function handler(req, res) {
 
           case 'off-sick':
             const sickReason = options?.find(opt => opt.name === 'reason')?.value || 'Not specified';
-            const discordUserId8 = user?.id;
-            const dbUser8 = await db.select().from(users).where(eq(users.discordId, discordUserId8)).limit(1);
+            const sickUser = await findLinkedUser(interactionUserId);
 
-            if (dbUser8.length === 0) {
+            if (!sickUser) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -432,7 +457,7 @@ export default async function handler(req, res) {
             // Create a sick leave request
             const today5 = new Date();
             await db.insert(vacationRequests).values({
-              employeeName: dbUser8[0].name,
+              employeeName: sickUser.name,
               startDate: today5,
               endDate: today5, // Single day for now, can be extended
               days: 1,
@@ -450,10 +475,9 @@ export default async function handler(req, res) {
             });
 
           case 'break':
-            const discordUserId9 = user?.id;
-            const dbUser9 = await db.select().from(users).where(eq(users.discordId, discordUserId9)).limit(1);
+            const breakUser = await findLinkedUser(interactionUserId);
 
-            if (dbUser9.length === 0) {
+            if (!breakUser) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -463,16 +487,9 @@ export default async function handler(req, res) {
               });
             }
 
-            const today6 = new Date();
-            today6.setHours(0, 0, 0, 0);
-            const entry4 = await db.select()
-              .from(timeEntries)
-              .where(and(
-                eq(timeEntries.employeeName, dbUser9[0].name),
-                eq(timeEntries.date, today6)
-              )).limit(1);
+            const entry4 = await findTodayEntry(breakUser.name);
 
-            if (entry4.length === 0 || !entry4[0].isClockedIn) {
+            if (!entry4 || !entry4.isClockedIn) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -482,7 +499,7 @@ export default async function handler(req, res) {
               });
             }
 
-            if (entry4[0].breaks.some(b => !b.end)) {
+            if (entry4.breaks.some(b => !b.end)) {
               return res.status(200).json({
                 type: 4,
                 data: {
@@ -495,9 +512,14 @@ export default async function handler(req, res) {
             const breakStart = new Date();
             const breakEnd = new Date(breakStart.getTime() + 60 * 60 * 1000); // 60 minutes
 
+            const updatedBreaks = serializeIntervalsForStorage([
+              ...entry4.breaks,
+              { start: breakStart, end: breakEnd },
+            ]);
+
             await db.update(timeEntries)
-              .set({ breaks: [...entry4[0].breaks, { start: breakStart, end: breakEnd }] })
-              .where(eq(timeEntries.id, entry4[0].id));
+              .set({ breaks: updatedBreaks })
+              .where(eq(timeEntries.id, entry4.id));
 
             return res.status(200).json({
               type: 4,
@@ -510,20 +532,26 @@ export default async function handler(req, res) {
           case 'who-is-online':
             try {
               // Get today's date
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
+              const today = startOfDayLocal(new Date());
+              const tomorrow = startOfDayLocal(new Date(today.getTime() + 24 * 60 * 60 * 1000));
 
               // Get all time entries for today
-              const todayEntries = await db.select().from(timeEntries);
+              const todayEntriesRaw = await db.select()
+                .from(timeEntries)
+                .where(and(
+                  gte(timeEntries.date, today),
+                  lt(timeEntries.date, tomorrow)
+                ));
+
+              const todayEntries = todayEntriesRaw
+                .map(normalizeDbTimeEntry)
+                .filter((entry) => entry !== null);
 
               // Get all users to map names
               const allUsers = await db.select().from(users);
 
               // Create user map for quick lookup
-              const userMap = {};
-              allUsers.forEach(user => {
-                userMap[user.id] = user.name;
-              });
+              const userMap = new Map(allUsers.map(user => [user.name, user]));
 
               // Categorize users
               const workingUsers = [];
@@ -531,32 +559,33 @@ export default async function handler(req, res) {
               const offUsers = [];
 
               todayEntries.forEach(entry => {
-                const entryDate = new Date(entry.date);
-                if (entryDate.getTime() !== today.getTime()) return;
-
-                const userName = userMap[entry.employeeName] || entry.employeeName;
+                const userRecord = userMap.get(entry.employeeName);
+                const userName = userRecord?.name || entry.employeeName;
 
                 if (entry.isClockedIn) {
-                  if (entry.breaks.some(b => !b.end)) {
+                  const activeBreak = entry.breaks.find(b => !b.end);
+                  const activeOff = entry.offs.find(o => !o.end);
+
+                  if (activeBreak) {
                     // On break
                     breakUsers.push({
                       name: userName,
                       workType: entry.workType,
-                      breakStart: entry.breaks.find(b => !b.end)?.start
+                      breakStart: activeBreak.start
                     });
-                  } else if (entry.offs.some(o => !o.end)) {
+                  } else if (activeOff) {
                     // Off duty
                     offUsers.push({
                       name: userName,
                       workType: entry.workType,
-                      offStart: entry.offs.find(o => !o.end)?.start
+                      offStart: activeOff.start
                     });
                   } else {
                     // Actively working
                     workingUsers.push({
                       name: userName,
                       workType: entry.workType,
-                      clockedInAt: entry.lastClockIn ? new Date(entry.lastClockIn).toLocaleTimeString() : 'Unknown'
+                      clockedInAt: entry.lastClockIn ? entry.lastClockIn.toLocaleTimeString() : 'Unknown'
                     });
                   }
                 }
@@ -572,11 +601,11 @@ export default async function handler(req, res) {
               }
 
               if (breakUsers.length > 0) {
-                content += `**☕ On Break:**\n${breakUsers.map(u => `• ${u.name} (${u.workType}) - Break started ${u.breakStart ? new Date(u.breakStart).toLocaleTimeString() : 'Unknown'}`).join('\n')}\n\n`;
+                content += `**☕ On Break:**\n${breakUsers.map(u => `• ${u.name} (${u.workType}) - Break started ${u.breakStart ? u.breakStart.toLocaleTimeString() : 'Unknown'}`).join('\n')}\n\n`;
               }
 
               if (offUsers.length > 0) {
-                content += `**⏸️ Off Duty:**\n${offUsers.map(u => `• ${u.name} (${u.workType}) - Off since ${u.offStart ? new Date(u.offStart).toLocaleTimeString() : 'Unknown'}`).join('\n')}\n\n`;
+                content += `**⏸️ Off Duty:**\n${offUsers.map(u => `• ${u.name} (${u.workType}) - Off since ${u.offStart ? u.offStart.toLocaleTimeString() : 'Unknown'}`).join('\n')}\n\n`;
               }
 
               content += `*Total active today: ${workingUsers.length + breakUsers.length + offUsers.length} team members*`;
@@ -629,3 +658,4 @@ export default async function handler(req, res) {
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
+

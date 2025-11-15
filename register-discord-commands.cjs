@@ -1,6 +1,6 @@
-import { REST } from '@discordjs/rest';
-import { Routes, ApplicationCommandOptionType } from 'discord-api-types/v9';
-import dotenv from 'dotenv';
+const { REST } = require('@discordjs/rest');
+const { Routes, ApplicationCommandOptionType } = require('discord-api-types/v9');
+const dotenv = require('dotenv');
 
 dotenv.config({ path: '.env.local' });
 
@@ -72,39 +72,43 @@ const commands = [
   },
 ];
 
-const rest = new REST({ version: '9' }).setToken(DISCORD_BOT_TOKEN);
+async function registerCommands() {
+  try {
+    const rest = new REST({ version: '9' }).setToken(DISCORD_BOT_TOKEN);
 
-console.log('🤖 Registrujem Discord slash komande...\n');
+    console.log('🤖 Registrujem Discord slash komande...\n');
 
-try {
-  const data = await rest.put(
-    Routes.applicationCommands(DISCORD_CLIENT_ID),
-    { body: commands }
-  );
+    const data = await rest.put(
+      Routes.applicationCommands(DISCORD_CLIENT_ID),
+      { body: commands }
+    );
 
-  console.log(`✅ Uspešno registrovano ${data.length} komandi:\n`);
-  
-  data.forEach((cmd) => {
-    console.log(`   /${cmd.name} - ${cmd.description}`);
-  });
+    console.log(`✅ Uspešno registrovano ${data.length} komandi:\n`);
 
-  console.log('\n🎉 Komande su dostupne u svim Discord serverima gde je bot dodat!');
-  console.log('\n📌 Sledeći korak:');
-  console.log('   1. Idi na Discord Developer Portal');
-  console.log('   2. General Information > INTERACTIONS ENDPOINT URL');
-  console.log('   3. Unesi: https://vacation-tracker-j5zk.vercel.app/api/discord/interactions');
-  console.log('   4. Klikni Save Changes');
-  console.log('\n💡 Test komande u Discord serveru: /vacation-status');
+    data.forEach((cmd) => {
+      console.log(`   /${cmd.name} - ${cmd.description}`);
+    });
 
-} catch (error) {
-  console.error('❌ Greška pri registraciji komandi:', error);
-  
-  if (error.code === 50001) {
-    console.log('\n📋 Bot nema potrebne permissions:');
-    console.log('   Invite bot sa: applications.commands scope');
-  } else if (error.code === 401) {
-    console.log('\n📋 Nevažeći BOT_TOKEN - proveri token u .env.local');
+    console.log('\n🎉 Komande su dostupne u svim Discord serverima gde je bot dodat!');
+    console.log('\n📌 Sledeći korak:');
+    console.log('   1. Idi na Discord Developer Portal');
+    console.log('   2. General Information > INTERACTIONS ENDPOINT URL');
+    console.log('   3. Unesi: https://vacation-tracker-j5zk.vercel.app/api/discord/interactions');
+    console.log('   4. Klikni Save Changes');
+    console.log('\n💡 Test komande u Discord serveru: /vacation-status');
+  } catch (error) {
+    console.error('❌ Greška pri registraciji komandi:', error);
+
+    if (error.code === 50001) {
+      console.log('\n📋 Bot nema potrebne permissions:');
+      console.log('   Invite bot sa: applications.commands scope');
+    } else if (error.code === 401) {
+      console.log('\n📋 Nevažeći BOT_TOKEN - proveri token u .env.local');
+    }
+
+    process.exitCode = 1;
   }
-  
-  process.exit(1);
 }
+
+registerCommands();
+

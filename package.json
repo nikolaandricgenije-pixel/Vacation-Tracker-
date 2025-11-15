@@ -2,7 +2,7 @@
   "name": "vacation-tracker",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,10 +10,10 @@
     "preview": "vite preview",
     "server": "cd server && node index.js",
     "server:dev": "cd server && node index.js",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:seed": "node drizzle/seed.js"
+    "db:generate": "drizzle-kit generate --config=drizzle.config.cjs",
+    "db:migrate": "drizzle-kit migrate --config=drizzle.config.cjs",
+    "db:push": "drizzle-kit push --config=drizzle.config.cjs",
+    "db:seed": "node drizzle/seed.cjs"
   },
   "dependencies": {
     "@discordjs/rest": "^2.6.0",
